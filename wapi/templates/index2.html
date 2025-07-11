@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather SPA</title>
+  <link rel="stylesheet" href="/static/index2.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+
+<body>
+  <!-- Auth Container -->
+  <div id="auth-section">
+    <h2>Weather Station Login</h2>
+    <div id="auth-forms">
+      <div id="signin-form">
+        <h3>Sign In</h3>
+        <input type="text" id="login-username" placeholder="Username" />
+        <input type="password" id="login-password" placeholder="Password" />
+        <button onclick="login()">Sign In</button>
+        <p>Don't have an account? <a href="#" onclick="toggleAuthForms()">Sign Up</a></p>
+      </div>
+
+      <div id="signup-form" style="display: none;">
+        <h3>Sign Up</h3>
+        <input type="text" id="signup-username" placeholder="Username" />
+        <input type="password" id="signup-password" placeholder="Password" />
+        <button onclick="signup()">Sign Up</button>
+        <p>Already have an account? <a href="#" onclick="toggleAuthForms()">Sign In</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Container -->
+  <div id="dashboard" class="hidden">
+    <header>
+      <h1>Weather Dashboard</h1>
+      <div id="user-info"></div>
+      <button onclick="logout()">Logout</button>
+    </header>
+
+    <section id="station-controls">
+      <button id="stations-btn">🌐 My Stations</button>
+    </section>
+
+    <section id="stations-grid" class="grid"></section>
+  </div>
+
+  <!-- Station Details Container -->
+  <div id="station-detail" class="hidden">
+    <button onclick="backToDashboard()">← Back</button>
+    <h2 id="detail-title">Station Details</h2>
+    <div id="detail-info"></div>
+    <button onclick="showHistoricalChart()">📈 View Trend</button>
+  </div>
+
+  <!-- Historical View Popup -->
+  <div id="historical-popup" class="his-popup hidden">
+    <div class="his-popup-content">
+      <span class="his-close-btn" onclick="closeHistoricalChart()">&times;</span>
+      <h4>📈 Historical Data</h4>
+      <div>
+        <label><input type="checkbox" value="temperature" checked> Temperature</label>
+        <label><input type="checkbox" value="humidity"> Humidity</label>
+        <label><input type="checkbox" value="pressure"> Pressure</label>
+        <label><input type="checkbox" value="uv_index"> UV Index</label>
+        <label><input type="checkbox" value="wind_speed"> Wind Speed</label>
+        <label><input type="checkbox" value="wind_direction"> Wind Direction</label>
+      </div>
+      <canvas id="historical-chart" width="600" height="300"></canvas>
+    </div>
+  </div>
+
+  <!-- Add Station Popup -->
+  <div id="add-station-popup" class="popup hidden">
+    <h3>Add Station</h3>
+    <form id="add-station-form" onsubmit="submitAddStation(event)">
+      <label for="station-location">Location:</label>
+      <input type="text" id="station-location" required />
+      <div class="popup-actions">
+        <button type="submit">➕ Add</button>
+        <button type="button" onclick="hideAddStationPopup()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Edit Station Popup -->
+  <div id="edit-station-popup" class="popup hidden">
+    <h3>Edit Station</h3>
+    <form id="edit-station-form">
+      <input type="hidden" id="edit-station-id" />
+      <div class="form-group">
+        <label for="edit-location">New Location</label>
+        <input type="text" id="edit-location" required />
+      </div>
+      <div class="form-group checkbox-group">
+        <label for="edit-is-public">
+          <input type="checkbox" id="edit-is-public" />
+          Make station public
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="primary">Update</button>
+        <button type="button" class="cancel" onclick="closeEditStationPopup()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/scripts.js"></script>
+</body>
+</html>
