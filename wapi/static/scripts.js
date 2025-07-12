@@ -353,7 +353,7 @@ function fetchStationDetail() {
         <p>💨 <strong>Wind Speed:</strong> ${data.wind_speed} m/s</p>
         <p>🧭 <strong>Wind Direction:</strong> ${data.wind_direction}</p>
         <p>☀️ <strong>UV Index:</strong> ${data.uv_index}</p>
-        <p>🌧️ <strong>Rain Status:</strong> ${data.rain_status}</p>
+        <p>🌧️ <strong>Rain Status:</strong> ${data.is_raining}</p>
       `;
     });
 }
