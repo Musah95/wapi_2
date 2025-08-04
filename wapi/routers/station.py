@@ -281,50 +281,9 @@ def create_data(
             detail=f"An error occurred while processing the request: {str(e)}"
         )
 
-
-'''
-@router.post("/data", status_code=status.HTTP_201_CREATED, response_model=schemas.DataOut)
-def create_data(received_data: schemas.DataCreate, auth_station: schemas.StationData = Depends(oauth2.authenticate_station), db: Session = Depends(get_db)):
-    """
-    Create or update weather data for authenticated station
-    """
-
-    stn = db.query(models.Station).filter(models.Station.station_id == auth_station.station_id)
-    stn.update(
-        {
-            "location": received_data.location,
-            "wind_speed": received_data.wind_speed,
-            "wind_direction": received_data.wind_direction,
-            "temperature": received_data.temperature,
-            "pressure": received_data.pressure,
-            "humidity": received_data.humidity,
-            "uv_index": received_data.uv_index,
-            "is_raining": received_data.is_raining,
-        },
-        synchronize_session=False)
-
-
-    cleaned_received_data = models.Data(
-            station_id=auth_station.station_id,
-            location=auth_station.location,
-            temperature=received_data.temperature,
-            pressure=received_data.pressure,
-            humidity=received_data.humidity,
-            wind_speed=received_data.wind_speed,
-            wind_direction=received_data.wind_direction,
-            uv_index=received_data.uv_index,
-            is_raining=received_data.is_raining,
-        )
-
-    # Commit received data to data table
-    db.add(cleaned_received_data)
-    db.commit()
-    db.refresh(cleaned_received_data)
-    
-    return cleaned_received_data
-
-'''
 # GET HISTORICAL DATA
+from datetime import datetime, timedelta
+
 @router.get("/{station_id}/historical_data", response_model=List[schemas.DataOut])
 def get_historical_data(
     station_id: int,
@@ -335,45 +294,54 @@ def get_historical_data(
 ):
     """
     Retrieve historical weather data for a specific station.
-
-    Args:
-        station_id (int): The ID of the station to retrieve data for.
-        start_time (Optional[str]): Start time for filtering (ISO format).
-        end_time (Optional[str]): End time for filtering (ISO format).
-        auth (schemas.User): The authenticated user.
-        db (Session): Database session dependency.
-
-    Returns:
-        List[schemas.DataOut]: A list of historical weather data records.
+    If no time filters are provided, returns data from the last 24 hours
+    relative to the most recent record.
     """
-    # Query the station to ensure it exists and the user is authorized
+    # Ensure station exists
     station = db.query(models.Station).filter(models.Station.station_id == station_id).first()
-
     if not station:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Station with ID '{station_id}' not found."
         )
 
+    # Check user authorization
     if not auth.is_admin and auth.username != station.owner and not station.is_public:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to access this station's data."
         )
 
-    # Query historical data for the station
+    # Determine default time range if no filters provided
+    if not start_time and not end_time:
+        latest_record = (
+            db.query(models.Data)
+            .filter(models.Data.station_id == station_id)
+            .order_by(models.Data.created_at.desc())
+            .first()
+        )
+
+        if not latest_record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No data found for this station."
+            )
+
+        end_dt = latest_record.created_at
+        start_dt = end_dt - timedelta(hours=24)
+    else:
+        start_dt = datetime.fromisoformat(start_time) if start_time else None
+        end_dt = datetime.fromisoformat(end_time) if end_time else None
+
+    # Build and filter query
     query = db.query(models.Data).filter(models.Data.station_id == station_id)
+    if start_dt:
+        query = query.filter(models.Data.created_at >= start_dt)
+    if end_dt:
+        query = query.filter(models.Data.created_at <= end_dt)
 
-    # Apply time filters if provided
-    if start_time:
-        query = query.filter(models.Data.created_at >= start_time)
-    if end_time:
-        query = query.filter(models.Data.created_at <= end_time)
+    historical_data = query.order_by(models.Data.created_at.asc()).all()  # Ascending order
 
-    # Fetch the data
-    historical_data = query.order_by(models.Data.created_at.desc()).all()
-
-    # Check if no records found
     if not historical_data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -381,6 +349,3 @@ def get_historical_data(
         )
 
     return historical_data
-
-
-
