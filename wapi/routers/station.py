@@ -239,7 +239,10 @@ def create_data(
     Create or update weather data for authenticated station.
     """
     try:
-        # Update station attributes
+        from datetime import datetime
+        current_time = datetime.utcnow()
+        
+        # Update station attributes including last_updated timestamp
         stn = db.query(models.Station).filter(models.Station.station_id == auth_station.station_id)
         stn.update(
             {
@@ -251,6 +254,7 @@ def create_data(
                 "humidity": received_data.humidity,
                 "uv_index": received_data.uv_index,
                 "is_raining": received_data.is_raining,
+                "last_updated": current_time,
             },
             synchronize_session=False
         )

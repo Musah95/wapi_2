@@ -80,6 +80,7 @@ class StationData(DataOut):
     location: str
     api_access_key: str
     created_at: datetime
+    last_updated: datetime
     is_public: bool
 
     class Config:
@@ -90,36 +91,9 @@ class PublicStationData(DataOut):
     location: str
     owner: str
     created_at: datetime
+    last_updated: datetime
     is_public: bool
 
     class Config:
         from_attributes = True
 
-'''
-# USER, AUTH SCHEMAS 
-class UserCreate(BaseModel):
-    username: str
-    password: str
-
-
-
-
-
-
-
-# WEATHER DATA SCHEMAS
-
-
-class CurrentData(BaseModel):
-    station_id: str
-    data: dict
-    created_at: datetime
-
-
-# WEATHER STATION SHEMAS
-
-
-
-
-
-'''

@@ -26,6 +26,7 @@ class Station(Base):
     location = Column(String, nullable=False)
     owner = Column(String, ForeignKey("users.username", ondelete="CASCADE"), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'), nullable=False)
+    last_updated = Column(TIMESTAMP(timezone=True), nullable=True)
     is_public = Column(Boolean, server_default='False', nullable=False)
 
     temperature = Column(Float, default=0, nullable=False)
@@ -55,25 +56,7 @@ class Data(Base):
     
     created_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'), nullable=False)
 ###############################################################
-###############################################################    
-
-
-
-'''
-class CurrentData(Base):
-    __tablename__ = "current_data"
-
-    station_id = Column(Integer, ForeignKey("stations.station_id", ondelete="CASCADE"), primary_key=True, nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'), nullable=False)
-    # data = Column(JSON,nullable=False)
-    temperature = Column(Float, nullable=False)
-    pressure = Column(Float, nullable=False)
-    humidity = Column(Float, nullable=False)
-    wind_speed = Column(Float, nullable=False)
-    wind_direction = Column(String, nullable=False)
-    uv_index = Column(Float, nullable=False)
-    is_raining = Column(Boolean, server_default='True', nullable=False)
-'''
+##############################################################    
 
 
 

@@ -13,17 +13,26 @@ const API_BASE = "";
 // HELPER FUNCTIONS
 // ============================================
 /**
- * Determines if a station is connected based on most recent data timestamp.
+ * Determines if a station is connected based on last_updated timestamp.
  * A station is considered "connected" if data was received within the last 2 hours.
- * @param {string} lastDataTime - ISO timestamp of most recent data
+ * @param {string} lastUpdated - ISO timestamp of last data update
  * @returns {Object} { isConnected: boolean, status: string, badgeClass: string }
  */
-function getConnectionStatus(lastDataTime) {
+function getConnectionStatus(lastUpdated) {
+  if (!lastUpdated) {
+    return {
+      isConnected: false,
+      status: "Never Connected",
+      badgeClass: "badge-disconnected"
+    };
+  }
+  
   const now = new Date();
-  const lastData = new Date(lastDataTime);
-  const hoursAgo = (now - lastData) / (1000 * 60 * 60);
+  const lastUpdate = new Date(lastUpdated);
+  const minutesAgo = (now - lastUpdate) / (1000 * 60);
+  const hoursAgo = minutesAgo / 60;
 
-  const isConnected = hoursAgo <= 2;
+  const isConnected = minutesAgo <= 120; // 2 hours = 120 minutes
   return {
     isConnected,
     status: isConnected ? "Connected" : "Disconnected",
@@ -90,7 +99,7 @@ function renderPublicStations() {
       container.innerHTML = "";
 
       stations.forEach(station => {
-        const connectionStatus = getConnectionStatus(station.created_at);
+        const connectionStatus = getConnectionStatus(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card";
         card.innerHTML = `
@@ -335,7 +344,7 @@ function renderAuthenticatedPublicStations() {
       container.innerHTML = "";
 
       stations.forEach(station => {
-        const connectionStatus = getConnectionStatus(station.created_at);
+        const connectionStatus = getConnectionStatus(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card";
         card.innerHTML = `
@@ -399,7 +408,7 @@ function renderUserStations() {
       container.innerHTML = "";
 
       stations.forEach(station => {
-        const connectionStatus = getConnectionStatus(station.created_at);
+        const connectionStatus = getConnectionStatus(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card user-station";
         card.innerHTML = `
