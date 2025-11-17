@@ -88,6 +88,7 @@ class StationData(DataOut):
 class PublicStationData(DataOut):
     station_id: int
     location: str
+    owner: str
     created_at: datetime
     is_public: bool
 

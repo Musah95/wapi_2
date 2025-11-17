@@ -5,8 +5,43 @@ let currentUser = null;
 let currentStationId = null;
 let chartInstance = null;
 let detailRefreshInterval = null;
+let currentStationTab = "owned"; // Track which tab is active
 
 const API_BASE = "";
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+/**
+ * Determines if a station is connected based on most recent data timestamp.
+ * A station is considered "connected" if data was received within the last 2 hours.
+ * @param {string} lastDataTime - ISO timestamp of most recent data
+ * @returns {Object} { isConnected: boolean, status: string, badgeClass: string }
+ */
+function getConnectionStatus(lastDataTime) {
+  const now = new Date();
+  const lastData = new Date(lastDataTime);
+  const hoursAgo = (now - lastData) / (1000 * 60 * 60);
+
+  const isConnected = hoursAgo <= 2;
+  return {
+    isConnected,
+    status: isConnected ? "Connected" : "Disconnected",
+    badgeClass: isConnected ? "badge-connected" : "badge-disconnected"
+  };
+}
+
+/**
+ * Formats station name to include owner, location, and ID for uniqueness.
+ * Format: "Owner - Location (ID)"
+ * @param {string} owner - Station owner username
+ * @param {string} location - Station location
+ * @param {number} stationId - Station ID
+ * @returns {string} Formatted station name
+ */
+function formatStationName(owner, location, stationId) {
+  return `${owner} - ${location} (${stationId})`;
+}
 
 // ============================================
 // INITIALIZATION
@@ -55,12 +90,16 @@ function renderPublicStations() {
       container.innerHTML = "";
 
       stations.forEach(station => {
+        const connectionStatus = getConnectionStatus(station.created_at);
         const card = document.createElement("div");
         card.className = "station-card";
         card.innerHTML = `
           <div class="station-header">
-            <h3>📍 ${station.location}</h3>
-            <span class="badge badge-public">Public</span>
+            <h3>📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
+            <div class="badge-group">
+              <span class="badge badge-public">Public</span>
+              <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
+            </div>
           </div>
           <div class="station-data">
             <div class="data-row">
@@ -235,7 +274,109 @@ function showUserDashboard(user) {
     </div>
   `;
 
-  renderUserStations();
+  // Initialize tabs - show owned stations by default
+  currentStationTab = "owned";
+  switchStationTab("owned");
+}
+
+/**
+ * Switch between owned and public stations tabs for authenticated users.
+ * @param {string} tab - Either "owned" or "public"
+ */
+function switchStationTab(tab) {
+  currentStationTab = tab;
+
+  // Update tab button styles
+  const tabButtons = document.querySelectorAll(".station-tab-button");
+  tabButtons.forEach((btn, index) => {
+    if ((tab === "owned" && index === 0) || (tab === "public" && index === 1)) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  // Show/hide appropriate views
+  const ownedView = document.getElementById("owned-stations-view");
+  const publicView = document.getElementById("public-stations-view");
+
+  if (tab === "owned") {
+    ownedView.classList.add("active");
+    publicView.classList.remove("active");
+    renderUserStations();
+  } else {
+    ownedView.classList.remove("active");
+    publicView.classList.add("active");
+    renderAuthenticatedPublicStations();
+  }
+}
+
+/**
+ * Render public stations for authenticated users (in the public stations tab).
+ * Uses the auth-public-stations-grid container.
+ */
+function renderAuthenticatedPublicStations() {
+  const token = localStorage.getItem("token");
+  fetch(`${API_BASE}/stations/public`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to fetch public stations");
+      return res.json();
+    })
+    .then(stations => {
+      const container = document.getElementById("auth-public-stations-grid");
+
+      if (stations.length === 0) {
+        container.innerHTML = "<p class='no-data'>No public stations available.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+
+      stations.forEach(station => {
+        const connectionStatus = getConnectionStatus(station.created_at);
+        const card = document.createElement("div");
+        card.className = "station-card";
+        card.innerHTML = `
+          <div class="station-header">
+            <h3>📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
+            <div class="badge-group">
+              <span class="badge badge-public">Public</span>
+              <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
+            </div>
+          </div>
+          <div class="station-data">
+            <div class="data-row">
+              <span class="label">🌡️ Temperature:</span>
+              <span class="value">${station.temperature}°C</span>
+            </div>
+            <div class="data-row">
+              <span class="label">💧 Humidity:</span>
+              <span class="value">${station.humidity}%</span>
+            </div>
+            <div class="data-row">
+              <span class="label">📊 Pressure:</span>
+              <span class="value">${station.pressure} hPa</span>
+            </div>
+            <div class="data-row">
+              <span class="label">💨 Wind Speed:</span>
+              <span class="value">${station.wind_speed} m/s</span>
+            </div>
+            <div class="data-row">
+              <span class="label">🌧️ Raining:</span>
+              <span class="value">${station.is_raining ? 'Yes' : 'No'}</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-block" onclick="viewPublicStationDetail(${station.station_id})">View Details</button>
+        `;
+        container.appendChild(card);
+      });
+    })
+    .catch(err => {
+      console.error("Error fetching public stations:", err);
+      document.getElementById("auth-public-stations-grid").innerHTML = "<p class='error'>Failed to load public stations.</p>";
+    });
 }
 
 function renderUserStations() {
@@ -258,14 +399,18 @@ function renderUserStations() {
       container.innerHTML = "";
 
       stations.forEach(station => {
+        const connectionStatus = getConnectionStatus(station.created_at);
         const card = document.createElement("div");
         card.className = "station-card user-station";
         card.innerHTML = `
           <div class="station-header">
-            <h3>📍 ${station.location}</h3>
-            <span class="badge ${station.is_public ? 'badge-public' : 'badge-private'}">
-              ${station.is_public ? 'Public' : 'Private'}
-            </span>
+            <h3>📍 ${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}</h3>
+            <div class="badge-group">
+              <span class="badge ${station.is_public ? 'badge-public' : 'badge-private'}">
+                ${station.is_public ? 'Public' : 'Private'}
+              </span>
+              <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
+            </div>
           </div>
           <div class="station-data">
             <div class="data-row">

@@ -94,10 +94,25 @@
     <!-- User Stations Section (visible when authenticated) -->
     <section id="user-stations-section" class="section hidden">
       <div class="section-header">
-        <h2>⚙️ My Weather Stations</h2>
+        <h2>⚙️ Weather Stations</h2>
         <button class="btn btn-success" onclick="openAddStationModal()">+ Add New Station</button>
       </div>
-      <div id="user-stations-grid" class="stations-grid"></div>
+      
+      <!-- Station View Tabs -->
+      <div class="station-tabs">
+        <button class="station-tab-button active" onclick="switchStationTab('owned')">My Stations</button>
+        <button class="station-tab-button" onclick="switchStationTab('public')">Public Stations</button>
+      </div>
+
+      <!-- Owned Stations Grid -->
+      <div id="owned-stations-view" class="active">
+        <div id="user-stations-grid" class="stations-grid"></div>
+      </div>
+
+      <!-- Public Stations Grid (in authenticated view) -->
+      <div id="public-stations-view" class="hidden">
+        <div id="auth-public-stations-grid" class="stations-grid"></div>
+      </div>
     </section>
 
     <!-- Station Detail View (modal) -->
