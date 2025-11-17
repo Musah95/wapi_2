@@ -41,7 +41,7 @@ app.include_router(station.router)
 # Endpoint to serve sample frontend webpage
 @app.get("/")
 def index():
-    return FileResponse("wapi/templates/index2.html", status_code=200)
+    return FileResponse("wapi/templates/index.html", status_code=200)
 
 # Endpoint to get weather data
 @app.get("/weather")
