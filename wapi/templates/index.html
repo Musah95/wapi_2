@@ -1,126 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Weather SPA</title>
-    <link rel="stylesheet" href="/static/index.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-  </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Station Network</title>
+  <link rel="stylesheet" href="/static/index.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
 
-  <body>
-    <div class="wrapper">
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>🌤️ Weather Network</h1>
+      </div>
+      <div id="nav-actions" class="nav-actions">
+        <!-- Dynamically populated based on auth status -->
+      </div>
+    </div>
+  </nav>
 
-      <!-- Auth Container -->
-      <!-- centered -->
-      <div id="auth-section">
-        <h2>Weather Station Login</h2>
-  
-        <div id="auth-forms">
-          <div id="signin-form">
-            <h3>Sign In</h3>
-            <input type="text" id="login-username" placeholder="Username" />
-            <input type="password" id="login-password" placeholder="Password" />
-            <button onclick="login()">Sign In</button>
-            <p>Don't have an account? <a href="#" onclick="toggleAuthForms()">Sign Up</a></p>
+  <!-- Main Content -->
+  <main class="main-container">
+    <!-- Hero/Welcome Section (visible when not authenticated) -->
+    <section id="hero-section" class="hero-section">
+      <div class="hero-content">
+        <h2>Welcome to Weather Station Network</h2>
+        <p>Track real-time weather data from public stations around the world</p>
+      </div>
+    </section>
+
+    <!-- Public Stations Section -->
+    <section id="public-stations-section" class="section">
+      <div class="section-header">
+        <h2>📊 Public Weather Stations</h2>
+        <p id="station-count" class="station-count"></p>
+      </div>
+      <div id="public-stations-grid" class="stations-grid"></div>
+    </section>
+
+    <!-- Auth Modal (visible when not authenticated) -->
+    <div id="auth-modal" class="modal hidden">
+      <div class="modal-content auth-modal">
+        <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+        <div id="auth-container">
+          <div id="auth-tabs" class="auth-tabs">
+            <button class="tab-button active" onclick="switchAuthTab('signin')">Sign In</button>
+            <button class="tab-button" onclick="switchAuthTab('signup')">Sign Up</button>
           </div>
-  
-          <div id="signup-form" style="display: none;">
-            <h3>Sign Up</h3>
-            <input type="text" id="signup-username" placeholder="Username" />
-            <input type="password" id="signup-password" placeholder="Password" />
-            <button onclick="signup()">Sign Up</button>
-            <p>Already have an account? <a href="#" onclick="toggleAuthForms()">Sign In</a></p>
-          </div>
+
+          <!-- Sign In Form -->
+          <form id="signin-form" class="auth-form active" onsubmit="handleSignIn(event)">
+            <div class="form-group">
+              <label for="signin-username">Username</label>
+              <input type="text" id="signin-username" placeholder="Enter your username" required />
+            </div>
+            <div class="form-group">
+              <label for="signin-password">Password</label>
+              <input type="password" id="signin-password" placeholder="Enter your password" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+          </form>
+
+          <!-- Sign Up Form -->
+          <form id="signup-form" class="auth-form" onsubmit="handleSignUp(event)">
+            <div class="form-group">
+              <label for="signup-username">Username</label>
+              <input type="text" id="signup-username" placeholder="Choose a username" required />
+            </div>
+            <div class="form-group">
+              <label for="signup-password">Password</label>
+              <input type="password" id="signup-password" placeholder="Create a password" required />
+            </div>
+            <div class="form-group">
+              <label for="signup-password-confirm">Confirm Password</label>
+              <input type="password" id="signup-password-confirm" placeholder="Confirm password" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Sign Up</button>
+          </form>
         </div>
       </div>
-  
-      <!-- Dashboard Container -->
-      <div id="dashboard" class="hidden">
-        <!-- flex -->
-        <header class=""> 
-          <h1>Weather Dashboard</h1>
-          <div id="user-info"></div>
-          <button onclick="logout()">Logout</button>
-        </header>
-  
-        <section id="station-controls">
-          <button id="stations-btn">🌐 My Stations</button>
-        </section>
-        <!-- flex -->
-        <section id="stations-grid" class="grid"></section>
-  
+    </div>
+
+    <!-- User Dashboard Section (visible when authenticated) -->
+    <section id="user-dashboard" class="section hidden">
+      <div class="section-header">
+        <h2>👤 Your Profile</h2>
       </div>
-  
-      <!-- Station Details Container -->
-      <!-- centered -->
-      <div id="station-detail" class="hidden">
-          <button onclick="backToDashboard()">← Back</button>
-          <h2 id="detail-title">Station Details</h2>
-          <div id="detail-info"></div>
-          
-          <button onclick="showHistoricalChart()">📈 Show Historical Data</button>
-  
+      <div id="user-profile-card" class="profile-card"></div>
+    </section>
+
+    <!-- User Stations Section (visible when authenticated) -->
+    <section id="user-stations-section" class="section hidden">
+      <div class="section-header">
+        <h2>⚙️ My Weather Stations</h2>
+        <button class="btn btn-success" onclick="openAddStationModal()">+ Add New Station</button>
       </div>
-  
-      <!-- Historical View Popup -->
-      <div id="historical-popup" class="his-popup hidden">
-        <div class="his-popup-content">
-          <span class="his-close-btn" onclick="closeHistoricalChart()">&times;</span>
-          <h4>📈 Historical Data</h4>
-          <div>
-            <label><input type="checkbox" value="temperature" checked> Temperature</label>
-            <label><input type="checkbox" value="humidity"> Humidity</label>
-            <label><input type="checkbox" value="pressure"> Pressure</label>
+      <div id="user-stations-grid" class="stations-grid"></div>
+    </section>
+
+    <!-- Station Detail View (modal) -->
+    <div id="station-detail-modal" class="modal hidden">
+      <div class="modal-content station-detail-modal">
+        <button class="modal-close" onclick="closeStationDetailModal()">&times;</button>
+        <h2 id="detail-title">Station Details</h2>
+        <div id="detail-info"></div>
+        <div class="detail-actions">
+          <button class="btn btn-secondary" onclick="showHistoricalChart()">📈 View Historical Data</button>
+          <button class="btn btn-secondary" id="edit-station-btn" style="display: none;" onclick="showEditStationModal()">✏️ Edit Station</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historical Data Chart Modal -->
+    <div id="historical-chart-modal" class="modal hidden">
+      <div class="modal-content chart-modal">
+        <button class="modal-close" onclick="closeHistoricalChartModal()">&times;</button>
+        <h3>📈 Historical Weather Data</h3>
+        <div id="chart-controls" class="chart-controls">
+          <div class="checkbox-group">
+            <label><input type="checkbox" value="temperature" checked> Temperature (°C)</label>
+            <label><input type="checkbox" value="humidity"> Humidity (%)</label>
+            <label><input type="checkbox" value="pressure"> Pressure (hPa)</label>
+            <label><input type="checkbox" value="wind_speed"> Wind Speed (m/s)</label>
             <label><input type="checkbox" value="uv_index"> UV Index</label>
-            <label><input type="checkbox" value="wind_speed"> Wind Speed</label>
             <label><input type="checkbox" value="wind_direction"> Wind Direction</label>
           </div>
-          <canvas id="historical-chart" width="600" height="300"></canvas>
+          <button class="btn btn-secondary" onclick="updateChart()">Update Chart</button>
         </div>
+        <canvas id="historical-chart" width="600" height="300"></canvas>
       </div>
-  
-      <!-- Add Station Popup -->
-      <div id="add-station-popup" class="popup hidden">
-        <h3>Add Station</h3>
-        <form id="add-station-form" onsubmit="submitAddStation(event)">
-          <label for="station-location">Location:</label>
-          <input type="text" id="station-location" required />
-          <div class="popup-actions">
-            <button type="submit">➕ Add</button>
-            <button type="button" onclick="hideAddStationPopup()">Cancel</button>
-          </div>
-        </form>
-      </div>
-  
-      <!-- Edit Station Popup -->
-      <div id="edit-station-popup" class="popup hidden">
-        <h3>Edit Station</h3>
-        <form id="edit-station-form">
-          <input type="hidden" id="edit-station-id">
-  
+    </div>
+
+    <!-- Add Station Modal -->
+    <div id="add-station-modal" class="modal hidden">
+      <div class="modal-content form-modal">
+        <button class="modal-close" onclick="closeAddStationModal()">&times;</button>
+        <h3>Add New Weather Station</h3>
+        <form id="add-station-form" onsubmit="handleAddStation(event)">
           <div class="form-group">
-            <label for="edit-location">New Location</label>
-            <input type="text" id="edit-location" required>
+            <label for="station-location">Location</label>
+            <input type="text" id="station-location" placeholder="e.g., New York City" required />
           </div>
-  
-          <div class="form-group checkbox-group">
-            <label for="edit-is-public">
-              <input type="checkbox" id="edit-is-public">
-              Make station public
-            </label>
-          </div>
-  
-          <div class="form-actions">
-            <button type="submit" class="primary">Update</button>
-            <button type="button" class="cancel" onclick="closeEditStationPopup()">Cancel</button>
-          </div>
+          <button type="submit" class="btn btn-primary">Create Station</button>
         </form>
       </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/static/scripts.js"></script>
+    <!-- Edit Station Modal -->
+    <div id="edit-station-modal" class="modal hidden">
+      <div class="modal-content form-modal">
+        <button class="modal-close" onclick="closeEditStationModal()">&times;</button>
+        <h3>Edit Weather Station</h3>
+        <form id="edit-station-form" onsubmit="handleEditStation(event)">
+          <input type="hidden" id="edit-station-id" />
+          <div class="form-group">
+            <label for="edit-location">Location</label>
+            <input type="text" id="edit-location" placeholder="Station location" required />
+          </div>
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" id="edit-is-public" />
+              Make this station public
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-secondary" onclick="closeEditStationModal()">Cancel</button>
+            <button type="button" class="btn btn-danger" id="delete-station-btn" style="display: none;" onclick="handleDeleteStation()">🗑️ Delete Station</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
 
-  </body>
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2025 Weather Station Network. All rights reserved.</p>
+  </footer>
 
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+  <script src="/static/app.js"></script>
+</body>
 </html>
