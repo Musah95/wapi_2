@@ -39,7 +39,17 @@ def verify_access_token(token: str, credential_exception):
     
     return token_data
     
-    
+def get_current_user_optional(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    if not token:
+        return None
+    try:
+        credential_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials", headers={"www-Authenticate":"Bearer"})
+        token_data = verify_access_token(token, credential_exception)
+        current_user = db.query(models.User).filter(models.User.user_id == token_data.user_id).first()
+        return current_user
+    except Exception:
+        return None
+
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credential_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials", headers={"www-Authenticate":"Bearer"})
     token_data = verify_access_token(token, credential_exception)
