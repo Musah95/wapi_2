@@ -80,7 +80,7 @@ class StationData(DataOut):
     location: str
     api_access_key: str
     created_at: datetime
-    last_updated: datetime
+    last_updated: Optional[datetime] = None
     is_public: bool
 
     class Config:
@@ -91,7 +91,7 @@ class PublicStationData(DataOut):
     location: str
     owner: str
     created_at: datetime
-    last_updated: datetime
+    last_updated: Optional[datetime] = None
     is_public: bool
 
     class Config:

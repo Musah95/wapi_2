@@ -19,18 +19,27 @@ const API_BASE = "";
  * @returns {Object} { isConnected: boolean, status: string, badgeClass: string }
  */
 function getConnectionStatus(lastUpdated) {
-  if (!lastUpdated) {
+  // Treat null/undefined/empty as never connected
+  if (lastUpdated == null || lastUpdated === "") {
     return {
       isConnected: false,
       status: "Never Connected",
       badgeClass: "badge-disconnected"
     };
   }
-  
-  const now = new Date();
+
+  // Parse the timestamp defensively. If parsing fails, treat as never connected.
   const lastUpdate = new Date(lastUpdated);
+  if (isNaN(lastUpdate.getTime())) {
+    return {
+      isConnected: false,
+      status: "Never Connected",
+      badgeClass: "badge-disconnected"
+    };
+  }
+
+  const now = new Date();
   const minutesAgo = (now - lastUpdate) / (1000 * 60);
-  const hoursAgo = minutesAgo / 60;
 
   const isConnected = minutesAgo <= 120; // 2 hours = 120 minutes
   return {
