@@ -293,7 +293,7 @@ def get_historical_data(
     station_id: int,
     start_time: Optional[str] = Query(None, description="Start time for filtering (ISO format)"),
     end_time: Optional[str] = Query(None, description="End time for filtering (ISO format)"),
-    auth: schemas.User = Depends(oauth2.get_current_user),
+    auth: schemas.User = Depends(oauth2.get_current_user_optional),
     db: Session = Depends(get_db),
 ):
     """
@@ -310,11 +310,16 @@ def get_historical_data(
         )
 
     # Check user authorization
-    if not auth.is_admin and auth.username != station.owner and not station.is_public:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not authorized to access this station's data."
-        )
+    # Allow access if:
+    # - station is public
+    # - user is admin
+    # - user is owner
+    if not station.is_public:
+        if auth is None or (not getattr(auth, 'is_admin', False) and getattr(auth, 'username', None) != station.owner):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to access this station's data."
+            )
 
     # Determine default time range if no filters provided
     if not start_time and not end_time:
