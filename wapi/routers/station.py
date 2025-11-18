@@ -134,7 +134,7 @@ def delete_station(
 @router.get("/{station_id}/details", response_model=schemas.StationData)
 def get_station_by_id(
     station_id: str,
-    auth: schemas.User = Depends(oauth2.get_current_user),  # User authentication (optional) 
+    auth: schemas.User = Depends(oauth2.get_current_user_optional),  # User authentication (optional)
     db: Session = Depends(get_db),
 ):
 
@@ -142,11 +142,16 @@ def get_station_by_id(
     station = db.query(models.Station).filter(models.Station.station_id == int(station_id)).first()
     
     # Check if the user is authorized to access the station details
-    if not auth.is_admin and auth.username != station.owner and not station.is_public:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not authorized to access this station's details."
-        )
+    # Allow access if:
+    # - station is public
+    # - user is admin
+    # - user is owner
+    if not station.is_public:
+        if auth is None or (not getattr(auth, 'is_admin', False) and getattr(auth, 'username', None) != station.owner):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to access this station's details."
+            )
     if not station:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Station with ID '{station_id}' not found.")
 
