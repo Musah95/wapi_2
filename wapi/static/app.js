@@ -61,6 +61,32 @@ function formatStationName(owner, location, stationId) {
   return `${owner} - ${location} (${stationId})`;
 }
 
+/**
+ * Adjusts the font size of station name headers to fit within their containers.
+ * Reduces font size progressively until the title fits on a single line.
+ */
+function adjustStationNames() {
+  const h3Elements = document.querySelectorAll(".station-header h3");
+  const minFontPx = 12; // Minimum font size in pixels
+
+  h3Elements.forEach(h3 => {
+    const containerWidth = h3.parentElement.clientWidth - 20; // Account for padding
+    
+    // Reset to default font size
+    h3.style.fontSize = '';
+    
+    // Get computed font size in pixels
+    const computed = window.getComputedStyle(h3);
+    let fontSize = parseFloat(computed.fontSize);
+
+    // Reduce font size until it fits or we hit the minimum
+    while (h3.scrollWidth > containerWidth && fontSize > minFontPx) {
+      fontSize -= 1;
+      h3.style.fontSize = fontSize + 'px';
+    }
+  });
+}
+
 // ============================================
 // INITIALIZATION
 // ============================================
