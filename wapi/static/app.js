@@ -47,22 +47,22 @@ function getConnectionStatus(lastUpdated) {
     status: isConnected ? "Connected" : "Disconnected",
     badgeClass: isConnected ? "badge-connected" : "badge-disconnected"
   };
-}
-
-/**
- * Reduce station title font-size until it fits within its container.
- * This is a lightweight polyfill-style helper for "fit text" behavior.
- * It only reduces font-size (not increases), and stops at a minimum size.
- */
-function adjustStationNames(minFontPx = 12) {
-  document.querySelectorAll('.station-card .station-header h3').forEach(h3 => {
-    // reset any inline size so we start from CSS baseline
-    h3.style.fontSize = '';
-
-    const containerWidth = h3.clientWidth;
-    // If there's no overflow, nothing to do
-    if (h3.scrollWidth <= containerWidth) return;
-
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'x',
+                threshold: 10
+              },
+              zoom: {
+                wheel: {
+                  enabled: true
+                },
+                pinch: {
+                  enabled: true
+                },
+                mode: 'x'
+              }
+            },
     // Get computed font size in pixels
     const computed = window.getComputedStyle(h3);
     let fontSize = parseFloat(computed.fontSize);
@@ -139,7 +139,7 @@ function renderPublicStations() {
         card.className = "station-card";
         card.innerHTML = `
           <div class="station-header">
-            <h3>📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
+            <h3 title="${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}">📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
             <div class="badge-group">
               <span class="badge badge-public">Public</span>
               <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
@@ -386,7 +386,7 @@ function renderAuthenticatedPublicStations() {
         card.className = "station-card";
         card.innerHTML = `
           <div class="station-header">
-            <h3>📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
+            <h3 title="${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}">📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
             <div class="badge-group">
               <span class="badge badge-public">Public</span>
               <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
@@ -452,7 +452,7 @@ function renderUserStations() {
         card.className = "station-card user-station";
         card.innerHTML = `
           <div class="station-header">
-            <h3>📍 ${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}</h3>
+            <h3 title="${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}">📍 ${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}</h3>
             <div class="badge-group">
               <span class="badge ${station.is_public ? 'badge-public' : 'badge-private'}">
                 ${station.is_public ? 'Public' : 'Private'}
@@ -745,10 +745,160 @@ function updateChart() {
             legend: {
               position: 'top'
             },
+              title: {
+                display: true,
+                text: 'Weather Station Data Over Time'
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    return 'Time: ' + context[0].label;
+                  },
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+                    return `${label}: ${value}`;
+                  }
+                }
+              },
+              zoom: {
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                  threshold: 10
+                },
+                zoom: {
+                  wheel: {
+                    enabled: true
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'x'
+                }
+              }
             title: {
               display: true,
               text: 'Weather Station Data Over Time'
             }
+              // Add missing comma here
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    return 'Time: ' + context[0].label;
+                  },
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+                    return `${label}: ${value}`;
+                  }
+                }
+              },
+              // Add missing comma here
+              zoom: {
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                  threshold: 10
+                },
+                zoom: {
+                  wheel: {
+                    enabled: true
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'x'
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    return 'Time: ' + context[0].label;
+                  },
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+                    return `${label}: ${value}`;
+                  }
+                }
+              },
+              zoom: {
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                  threshold: 10
+                },
+                zoom: {
+                  wheel: {
+                    enabled: true
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'x'
+                }
+              }
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    // Show full timestamp
+                    return 'Time: ' + context[0].label;
+                  },
+                  label: function(context) {
+                    // Show value and units
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+                    return `${label}: ${value}`;
+                  }
+                }
+              },
+              zoom: {
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                  threshold: 10
+                },
+                zoom: {
+                  wheel: {
+                    enabled: true
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'x'
+                }
+              }
+              zoom: {
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                  threshold: 10
+                },
+                zoom: {
+                  wheel: {
+                    enabled: true
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'x'
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    // Show full timestamp
+                    return 'Time: ' + context[0].label;
+                  },
+                  label: function(context) {
+                    // Show value and units
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+                    return `${label}: ${value}`;
+                  }
+                }
+              }
           },
           scales: {
             y: {
@@ -757,6 +907,13 @@ function updateChart() {
           }
         }
       });
+        // Attach Reset Zoom button
+        const resetBtn = document.getElementById('reset-zoom-btn');
+        if (resetBtn) {
+          resetBtn.onclick = () => {
+            if (chartInstance && chartInstance.resetZoom) chartInstance.resetZoom();
+          };
+        }
     })
     .catch(err => {
       console.error("Error loading chart data:", err);

@@ -231,10 +231,11 @@ body {
 }
 
 .station-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
   align-items: start;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .station-header h3 {
@@ -242,9 +243,8 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
-  /* Single line title that truncates if too long. Allow flex children to shrink. */
-  flex: 1 1 auto;
-  min-width: 0; /* allow flex item to shrink below content size */
+  grid-column: 1 / 3;
+  grid-row: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -31,14 +31,7 @@
       </div>
     </section>
 
-    <!-- Public Stations Section -->
-    <section id="public-stations-section" class="section">
-      <div class="section-header">
-        <h2>📊 Public Weather Stations</h2>
-        <p id="station-count" class="station-count"></p>
-      </div>
-      <div id="public-stations-grid" class="stations-grid"></div>
-    </section>
+    <!-- Public Stations Section (removed for authenticated users; now only in tabbed section) -->
 
     <!-- Auth Modal (visible when not authenticated) -->
     <div id="auth-modal" class="modal hidden">
@@ -145,6 +138,9 @@
           <button class="btn btn-secondary" onclick="updateChart()">Update Chart</button>
         </div>
         <canvas id="historical-chart" width="600" height="300"></canvas>
+        <div class="chart-ux-controls">
+          <button class="btn btn-secondary" id="reset-zoom-btn" type="button">Reset Zoom</button>
+        </div>
       </div>
     </div>
 
@@ -198,5 +194,6 @@
   <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <script src="/static/app.js"></script>
+  <script src="/static/chartjs-plugin-zoom.min.js"></script>
 </body>
 </html>
