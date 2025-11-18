@@ -50,6 +50,32 @@ function getConnectionStatus(lastUpdated) {
 }
 
 /**
+ * Reduce station title font-size until it fits within its container.
+ * This is a lightweight polyfill-style helper for "fit text" behavior.
+ * It only reduces font-size (not increases), and stops at a minimum size.
+ */
+function adjustStationNames(minFontPx = 12) {
+  document.querySelectorAll('.station-card .station-header h3').forEach(h3 => {
+    // reset any inline size so we start from CSS baseline
+    h3.style.fontSize = '';
+
+    const containerWidth = h3.clientWidth;
+    // If there's no overflow, nothing to do
+    if (h3.scrollWidth <= containerWidth) return;
+
+    // Get computed font size in pixels
+    const computed = window.getComputedStyle(h3);
+    let fontSize = parseFloat(computed.fontSize);
+
+    // Reduce font size until it fits or we hit the minimum
+    while (h3.scrollWidth > containerWidth && fontSize > minFontPx) {
+      fontSize -= 1;
+      h3.style.fontSize = fontSize + 'px';
+    }
+  });
+}
+
+/**
  * Formats station name to include owner, location, and ID for uniqueness.
  * Format: "Owner - Location (ID)"
  * @param {string} owner - Station owner username
@@ -145,6 +171,8 @@ function renderPublicStations() {
         `;
         container.appendChild(card);
       });
+      // Ensure long station titles fit on a single line
+      adjustStationNames();
     })
     .catch(err => {
       console.error("Error fetching public stations:", err);
@@ -390,6 +418,8 @@ function renderAuthenticatedPublicStations() {
         `;
         container.appendChild(card);
       });
+      // Ensure long station titles fit on a single line in this grid
+      adjustStationNames();
     })
     .catch(err => {
       console.error("Error fetching public stations:", err);
@@ -456,6 +486,8 @@ function renderUserStations() {
         `;
         container.appendChild(card);
       });
+      // Ensure long station titles fit on a single line in the user grid
+      adjustStationNames();
     })
     .catch(err => {
       console.error("Error fetching stations:", err);

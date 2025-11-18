@@ -242,6 +242,12 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
+  /* Single line title that truncates if too long. Allow flex children to shrink. */
+  flex: 1 1 auto;
+  min-width: 0; /* allow flex item to shrink below content size */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badge {
