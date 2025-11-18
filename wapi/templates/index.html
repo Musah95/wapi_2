@@ -31,7 +31,14 @@
       </div>
     </section>
 
-    <!-- Public Stations Section (removed for authenticated users; now only in tabbed section) -->
+    <!-- Public Stations Section (visible on landing page, hidden for authenticated users) -->
+    <section id="public-stations-section" class="section">
+      <div class="section-header">
+        <h2>📊 Public Weather Stations</h2>
+        <p id="station-count" class="station-count"></p>
+      </div>
+      <div id="public-stations-grid" class="stations-grid"></div>
+    </section>
 
     <!-- Auth Modal (visible when not authenticated) -->
     <div id="auth-modal" class="modal hidden">

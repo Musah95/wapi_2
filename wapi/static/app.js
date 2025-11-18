@@ -47,32 +47,6 @@ function getConnectionStatus(lastUpdated) {
     status: isConnected ? "Connected" : "Disconnected",
     badgeClass: isConnected ? "badge-connected" : "badge-disconnected"
   };
-            zoom: {
-              pan: {
-                enabled: true,
-                mode: 'x',
-                threshold: 10
-              },
-              zoom: {
-                wheel: {
-                  enabled: true
-                },
-                pinch: {
-                  enabled: true
-                },
-                mode: 'x'
-              }
-            },
-    // Get computed font size in pixels
-    const computed = window.getComputedStyle(h3);
-    let fontSize = parseFloat(computed.fontSize);
-
-    // Reduce font size until it fits or we hit the minimum
-    while (h3.scrollWidth > containerWidth && fontSize > minFontPx) {
-      fontSize -= 1;
-      h3.style.fontSize = fontSize + 'px';
-    }
-  });
 }
 
 /**
@@ -93,8 +67,14 @@ function formatStationName(owner, location, stationId) {
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
   if (token) {
+    // Hide public stations and hero for authenticated users
+    document.getElementById("public-stations-section").classList.add("hidden");
+    document.getElementById("hero-section").classList.add("hidden");
     loadUserSession();
   } else {
+    // Show public stations and hero for unauthenticated users
+    document.getElementById("public-stations-section").classList.remove("hidden");
+    document.getElementById("hero-section").classList.remove("hidden");
     initializePublicView();
   }
 });
@@ -745,160 +725,38 @@ function updateChart() {
             legend: {
               position: 'top'
             },
-              title: {
-                display: true,
-                text: 'Weather Station Data Over Time'
-              },
-              tooltip: {
-                callbacks: {
-                  title: function(context) {
-                    return 'Time: ' + context[0].label;
-                  },
-                  label: function(context) {
-                    let label = context.dataset.label || '';
-                    let value = context.parsed.y;
-                    return `${label}: ${value}`;
-                  }
-                }
-              },
-              zoom: {
-                pan: {
-                  enabled: true,
-                  mode: 'x',
-                  threshold: 10
-                },
-                zoom: {
-                  wheel: {
-                    enabled: true
-                  },
-                  pinch: {
-                    enabled: true
-                  },
-                  mode: 'x'
-                }
-              }
             title: {
               display: true,
               text: 'Weather Station Data Over Time'
+            },
+            tooltip: {
+              callbacks: {
+                title: function(context) {
+                  return 'Time: ' + context[0].label;
+                },
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  let value = context.parsed.y;
+                  return `${label}: ${value}`;
+                }
+              }
+            },
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'x',
+                threshold: 10
+              },
+              zoom: {
+                wheel: {
+                  enabled: true
+                },
+                pinch: {
+                  enabled: true
+                },
+                mode: 'x'
+              }
             }
-              // Add missing comma here
-              tooltip: {
-                callbacks: {
-                  title: function(context) {
-                    return 'Time: ' + context[0].label;
-                  },
-                  label: function(context) {
-                    let label = context.dataset.label || '';
-                    let value = context.parsed.y;
-                    return `${label}: ${value}`;
-                  }
-                }
-              },
-              // Add missing comma here
-              zoom: {
-                pan: {
-                  enabled: true,
-                  mode: 'x',
-                  threshold: 10
-                },
-                zoom: {
-                  wheel: {
-                    enabled: true
-                  },
-                  pinch: {
-                    enabled: true
-                  },
-                  mode: 'x'
-                }
-              },
-              tooltip: {
-                callbacks: {
-                  title: function(context) {
-                    return 'Time: ' + context[0].label;
-                  },
-                  label: function(context) {
-                    let label = context.dataset.label || '';
-                    let value = context.parsed.y;
-                    return `${label}: ${value}`;
-                  }
-                }
-              },
-              zoom: {
-                pan: {
-                  enabled: true,
-                  mode: 'x',
-                  threshold: 10
-                },
-                zoom: {
-                  wheel: {
-                    enabled: true
-                  },
-                  pinch: {
-                    enabled: true
-                  },
-                  mode: 'x'
-                }
-              }
-              tooltip: {
-                callbacks: {
-                  title: function(context) {
-                    // Show full timestamp
-                    return 'Time: ' + context[0].label;
-                  },
-                  label: function(context) {
-                    // Show value and units
-                    let label = context.dataset.label || '';
-                    let value = context.parsed.y;
-                    return `${label}: ${value}`;
-                  }
-                }
-              },
-              zoom: {
-                pan: {
-                  enabled: true,
-                  mode: 'x',
-                  threshold: 10
-                },
-                zoom: {
-                  wheel: {
-                    enabled: true
-                  },
-                  pinch: {
-                    enabled: true
-                  },
-                  mode: 'x'
-                }
-              }
-              zoom: {
-                pan: {
-                  enabled: true,
-                  mode: 'x',
-                  threshold: 10
-                },
-                zoom: {
-                  wheel: {
-                    enabled: true
-                  },
-                  pinch: {
-                    enabled: true
-                  },
-                  mode: 'x'
-                }
-              },
-              tooltip: {
-                callbacks: {
-                  title: function(context) {
-                    // Show full timestamp
-                    return 'Time: ' + context[0].label;
-                  },
-                  label: function(context) {
-                    // Show value and units
-                    let label = context.dataset.label || '';
-                    let value = context.parsed.y;
-                    return `${label}: ${value}`;
-                  }
-                }
-              }
           },
           scales: {
             y: {
@@ -907,13 +765,13 @@ function updateChart() {
           }
         }
       });
-        // Attach Reset Zoom button
-        const resetBtn = document.getElementById('reset-zoom-btn');
-        if (resetBtn) {
-          resetBtn.onclick = () => {
-            if (chartInstance && chartInstance.resetZoom) chartInstance.resetZoom();
-          };
-        }
+      // Attach Reset Zoom button
+      const resetBtn = document.getElementById('reset-zoom-btn');
+      if (resetBtn) {
+        resetBtn.onclick = () => {
+          if (chartInstance && chartInstance.resetZoom) chartInstance.resetZoom();
+        };
+      }
     })
     .catch(err => {
       console.error("Error loading chart data:", err);
