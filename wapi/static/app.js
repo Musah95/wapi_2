@@ -5,7 +5,9 @@ let currentUser = null;
 let currentStationId = null;
 let chartInstance = null;
 let detailRefreshInterval = null;
+let stationsRefreshInterval = null; // Interval for auto-refreshing station list
 let currentStationTab = "owned"; // Track which tab is active
+const AUTO_REFRESH_INTERVAL = 5000; // Refresh every 5 seconds
 
 const API_BASE = "";
 
@@ -112,6 +114,8 @@ function initializePublicView() {
   showHeroSection();
   renderPublicStations();
   updateNavBar();
+  // Start auto-refresh for public view when unauthenticated
+  startStationsAutoRefresh();
 }
 
 function showHeroSection() {
@@ -143,34 +147,35 @@ function renderPublicStations() {
         const connectionStatus = getConnectionStatus(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card";
+        card.setAttribute("data-station-id", station.station_id);
         card.innerHTML = `
           <div class="station-header">
             <h3 title="${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}">📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
             <div class="badge-group">
               <span class="badge badge-public">Public</span>
-              <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
+              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status}</span>
             </div>
           </div>
           <div class="station-data">
             <div class="data-row">
               <span class="label">🌡️ Temperature:</span>
-              <span class="value">${station.temperature}°C</span>
+              <span class="value" data-metric="temperature">${station.temperature}°C</span>
             </div>
             <div class="data-row">
               <span class="label">💧 Humidity:</span>
-              <span class="value">${station.humidity}%</span>
+              <span class="value" data-metric="humidity">${station.humidity}%</span>
             </div>
             <div class="data-row">
               <span class="label">📊 Pressure:</span>
-              <span class="value">${station.pressure} hPa</span>
+              <span class="value" data-metric="pressure">${station.pressure} hPa</span>
             </div>
             <div class="data-row">
               <span class="label">💨 Wind Speed:</span>
-              <span class="value">${station.wind_speed} m/s</span>
+              <span class="value" data-metric="wind_speed">${station.wind_speed} m/s</span>
             </div>
             <div class="data-row">
               <span class="label">🌧️ Raining:</span>
-              <span class="value">${station.is_raining ? 'Yes' : 'No'}</span>
+              <span class="value" data-metric="is_raining">${station.is_raining ? 'Yes' : 'No'}</span>
             </div>
           </div>
           <button class="btn btn-secondary btn-block" onclick="viewPublicStationDetail(${station.station_id})">View Details</button>
@@ -329,6 +334,104 @@ function showUserDashboard(user) {
   // Initialize tabs - show owned stations by default
   currentStationTab = "owned";
   switchStationTab("owned");
+  
+  // Start auto-refresh of station data
+  startStationsAutoRefresh();
+}
+
+/**
+ * Start auto-refresh of station data.
+ * Periodically fetches latest station data and updates the UI without full re-render.
+ */
+function startStationsAutoRefresh() {
+  // Clear existing interval if any
+  if (stationsRefreshInterval) {
+    clearInterval(stationsRefreshInterval);
+  }
+
+  // Fetch and update every AUTO_REFRESH_INTERVAL milliseconds
+  stationsRefreshInterval = setInterval(() => {
+    // Always refresh public stations (works for unauthenticated and authenticated views)
+    fetch(`${API_BASE}/stations/public`)
+      .then(res => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(publicStations => {
+        if (!publicStations || !Array.isArray(publicStations)) return;
+        publicStations.forEach(station => {
+          const card = document.querySelector(`[data-station-id="${station.station_id}"]`);
+          if (!card) return;
+          const tempValue = card.querySelector('[data-metric="temperature"]');
+          if (tempValue) tempValue.textContent = station.temperature + '°C';
+          const humidityValue = card.querySelector('[data-metric="humidity"]');
+          if (humidityValue) humidityValue.textContent = station.humidity + '%';
+          const pressureValue = card.querySelector('[data-metric="pressure"]');
+          if (pressureValue) pressureValue.textContent = station.pressure + ' hPa';
+          const windSpeedValue = card.querySelector('[data-metric="wind_speed"]');
+          if (windSpeedValue) windSpeedValue.textContent = station.wind_speed + ' m/s';
+          const rainingValue = card.querySelector('[data-metric="is_raining"]');
+          if (rainingValue) rainingValue.textContent = station.is_raining ? 'Yes' : 'No';
+          const connectionBadge = card.querySelector('[data-metric="connection-status"]');
+          if (connectionBadge) {
+            const status = getConnectionStatus(station.last_updated);
+            connectionBadge.textContent = status.status;
+            connectionBadge.className = `badge ${status.badgeClass}`;
+          }
+        });
+      })
+      .catch(err => {
+        console.debug('Auto-refresh public stations error:', err);
+      });
+
+    // If authenticated, also refresh the user's stations
+    const token = localStorage.getItem("token");
+    if (token) {
+      fetch(`${API_BASE}/stations/all`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then(stations => {
+          if (!stations || !Array.isArray(stations)) return;
+          stations.forEach(station => {
+            const card = document.querySelector(`[data-station-id="${station.station_id}"]`);
+            if (!card) return;
+            const tempValue = card.querySelector('[data-metric="temperature"]');
+            if (tempValue) tempValue.textContent = station.temperature + '°C';
+            const humidityValue = card.querySelector('[data-metric="humidity"]');
+            if (humidityValue) humidityValue.textContent = station.humidity + '%';
+            const pressureValue = card.querySelector('[data-metric="pressure"]');
+            if (pressureValue) pressureValue.textContent = station.pressure + ' hPa';
+            const windSpeedValue = card.querySelector('[data-metric="wind_speed"]');
+            if (windSpeedValue) windSpeedValue.textContent = station.wind_speed + ' m/s';
+            const rainingValue = card.querySelector('[data-metric="is_raining"]');
+            if (rainingValue) rainingValue.textContent = station.is_raining ? 'Yes' : 'No';
+            const connectionBadge = card.querySelector('[data-metric="connection-status"]');
+            if (connectionBadge) {
+              const status = getConnectionStatus(station.last_updated);
+              connectionBadge.textContent = status.status;
+              connectionBadge.className = `badge ${status.badgeClass}`;
+            }
+          });
+        })
+        .catch(err => {
+          console.debug('Auto-refresh user stations error:', err);
+        });
+    }
+  }, AUTO_REFRESH_INTERVAL);
+}
+
+/**
+ * Stop auto-refresh of station data.
+ */
+function stopStationsAutoRefresh() {
+  if (stationsRefreshInterval) {
+    clearInterval(stationsRefreshInterval);
+    stationsRefreshInterval = null;
+  }
 }
 
 /**
@@ -390,34 +493,35 @@ function renderAuthenticatedPublicStations() {
         const connectionStatus = getConnectionStatus(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card";
+        card.setAttribute("data-station-id", station.station_id);
         card.innerHTML = `
           <div class="station-header">
             <h3 title="${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}">📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
             <div class="badge-group">
               <span class="badge badge-public">Public</span>
-              <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
+              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status}</span>
             </div>
           </div>
           <div class="station-data">
             <div class="data-row">
               <span class="label">🌡️ Temperature:</span>
-              <span class="value">${station.temperature}°C</span>
+              <span class="value" data-metric="temperature">${station.temperature}°C</span>
             </div>
             <div class="data-row">
               <span class="label">💧 Humidity:</span>
-              <span class="value">${station.humidity}%</span>
+              <span class="value" data-metric="humidity">${station.humidity}%</span>
             </div>
             <div class="data-row">
               <span class="label">📊 Pressure:</span>
-              <span class="value">${station.pressure} hPa</span>
+              <span class="value" data-metric="pressure">${station.pressure} hPa</span>
             </div>
             <div class="data-row">
               <span class="label">💨 Wind Speed:</span>
-              <span class="value">${station.wind_speed} m/s</span>
+              <span class="value" data-metric="wind_speed">${station.wind_speed} m/s</span>
             </div>
             <div class="data-row">
               <span class="label">🌧️ Raining:</span>
-              <span class="value">${station.is_raining ? 'Yes' : 'No'}</span>
+              <span class="value" data-metric="is_raining">${station.is_raining ? 'Yes' : 'No'}</span>
             </div>
           </div>
           <button class="btn btn-secondary btn-block" onclick="viewPublicStationDetail(${station.station_id})">View Details</button>
@@ -456,6 +560,7 @@ function renderUserStations() {
         const connectionStatus = getConnectionStatus(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card user-station";
+        card.setAttribute("data-station-id", station.station_id);
         card.innerHTML = `
           <div class="station-header">
             <h3 title="${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}">📍 ${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}</h3>
@@ -463,21 +568,21 @@ function renderUserStations() {
               <span class="badge ${station.is_public ? 'badge-public' : 'badge-private'}">
                 ${station.is_public ? 'Public' : 'Private'}
               </span>
-              <span class="badge ${connectionStatus.badgeClass}">${connectionStatus.status}</span>
+              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status}</span>
             </div>
           </div>
           <div class="station-data">
             <div class="data-row">
               <span class="label">🌡️ Temperature:</span>
-              <span class="value">${station.temperature}°C</span>
+              <span class="value" data-metric="temperature">${station.temperature}°C</span>
             </div>
             <div class="data-row">
               <span class="label">💧 Humidity:</span>
-              <span class="value">${station.humidity}%</span>
+              <span class="value" data-metric="humidity">${station.humidity}%</span>
             </div>
             <div class="data-row">
               <span class="label">📊 Pressure:</span>
-              <span class="value">${station.pressure} hPa</span>
+              <span class="value" data-metric="pressure">${station.pressure} hPa</span>
             </div>
             <div class="data-row">
               <span class="label">🌐 API Key:</span>
@@ -713,7 +818,7 @@ function updateChart() {
     headers: { Authorization: `Bearer ${token}` }
   })
     .then(res => {
-      if (!res.ok) throw new Error("Failed to fetch historical data");
+      if (!res.ok) throw new Error(`Failed to fetch historical data: ${res.status}`);
       return res.json();
     })
     .then(dataList => {
@@ -737,71 +842,84 @@ function updateChart() {
         chartInstance.destroy();
       }
 
-      const ctx = document.getElementById("historical-chart").getContext("2d");
-      chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: datasets
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top'
-            },
-            title: {
-              display: true,
-              text: 'Weather Station Data Over Time'
-            },
-            tooltip: {
-              callbacks: {
-                title: function(context) {
-                  return 'Time: ' + context[0].label;
+      const ctx = document.getElementById("historical-chart");
+      if (!ctx) {
+        console.error("Chart canvas element not found");
+        alert("Chart container not found");
+        return;
+      }
+
+      try {
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top'
+              },
+              title: {
+                display: true,
+                text: 'Weather Station Data Over Time'
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    return 'Time: ' + context[0].label;
+                  },
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+                    return `${label}: ${value}`;
+                  }
+                }
+              },
+              zoom: {
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                  threshold: 10
                 },
-                label: function(context) {
-                  let label = context.dataset.label || '';
-                  let value = context.parsed.y;
-                  return `${label}: ${value}`;
+                zoom: {
+                  wheel: {
+                    enabled: true
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'x'
                 }
               }
             },
-            zoom: {
-              pan: {
-                enabled: true,
-                mode: 'x',
-                threshold: 10
-              },
-              zoom: {
-                wheel: {
-                  enabled: true
-                },
-                pinch: {
-                  enabled: true
-                },
-                mode: 'x'
+            scales: {
+              y: {
+                beginAtZero: false
               }
             }
-          },
-          scales: {
-            y: {
-              beginAtZero: false
-            }
           }
+        });
+        console.log("Chart created successfully");
+        
+        // Attach Reset Zoom button
+        const resetBtn = document.getElementById('reset-zoom-btn');
+        if (resetBtn) {
+          resetBtn.onclick = () => {
+            if (chartInstance && chartInstance.resetZoom) chartInstance.resetZoom();
+          };
         }
-      });
-      // Attach Reset Zoom button
-      const resetBtn = document.getElementById('reset-zoom-btn');
-      if (resetBtn) {
-        resetBtn.onclick = () => {
-          if (chartInstance && chartInstance.resetZoom) chartInstance.resetZoom();
-        };
+      } catch (chartError) {
+        console.error("Error creating Chart.js instance:", chartError);
+        alert("Failed to render chart: " + chartError.message);
       }
     })
     .catch(err => {
       console.error("Error loading chart data:", err);
-      alert("Failed to load historical data");
+      alert("Failed to load historical data: " + err.message);
     });
 }
 
@@ -853,6 +971,9 @@ function logout() {
   localStorage.removeItem("token");
   currentUser = null;
   currentStationId = null;
+
+  // Stop auto-refresh
+  stopStationsAutoRefresh();
 
   // Reset view
   document.getElementById("user-dashboard").classList.add("hidden");
