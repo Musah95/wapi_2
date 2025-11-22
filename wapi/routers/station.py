@@ -1,10 +1,3 @@
-@router.get("/{station_id}/latest_metrics", response_model=List[schemas.DataOut])
-def get_latest_metrics(station_id: int, db: Session = Depends(get_db)):
-    """
-    Return the last two readings for the station for trend calculation.
-    """
-    data_points = db.query(models.Data).filter(models.Data.station_id == station_id).order_by(models.Data.created_at.desc()).limit(2).all()
-    return data_points
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
 from sqlalchemy import func
@@ -260,6 +253,13 @@ def get_public_stations(db: Session = Depends(get_db)):
     stations = db.query(models.Station).filter(models.Station.is_public == True).all()
     return stations
 
+@router.get("/{station_id}/latest_metrics", response_model=List[schemas.DataOut])
+def get_latest_metrics(station_id: int, db: Session = Depends(get_db)):
+    """
+    Return the last two readings for the station for trend calculation.
+    """
+    data_points = db.query(models.Data).filter(models.Data.station_id == station_id).order_by(models.Data.created_at.desc()).limit(2).all()
+    return data_points
 
 # # # DATA CRUD OPERATIONS
 
