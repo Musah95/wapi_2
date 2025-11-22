@@ -33,6 +33,7 @@ class TokenData(BaseModel):
 
 class StationCreate(BaseModel):
     location: str
+    station_name: Optional[str] = None
 
 class StationUpdate(BaseModel):
     location: Optional[str] = None
@@ -42,6 +43,8 @@ class StationUpdate(BaseModel):
 class StationDetail(BaseModel):
     station_id: int
     location: str
+    station_name: Optional[str] = None
+    unique_code: str
     owner: str
     api_access_key: str
     created_at: datetime
@@ -78,6 +81,8 @@ class DataOut(BaseModel):
 class StationData(DataOut):
     station_id: int
     location: str
+    station_name: Optional[str] = None
+    unique_code: str
     api_access_key: str
     created_at: datetime
     last_updated: Optional[datetime] = None
@@ -89,6 +94,8 @@ class StationData(DataOut):
 class PublicStationData(DataOut):
     station_id: int
     location: str
+    station_name: Optional[str] = None
+    unique_code: str
     owner: str
     created_at: datetime
     last_updated: Optional[datetime] = None

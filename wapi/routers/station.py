@@ -1,10 +1,18 @@
+@router.get("/{station_id}/latest_metrics", response_model=List[schemas.DataOut])
+def get_latest_metrics(station_id: int, db: Session = Depends(get_db)):
+    """
+    Return the last two readings for the station for trend calculation.
+    """
+    data_points = db.query(models.Data).filter(models.Data.station_id == station_id).order_by(models.Data.created_at.desc()).limit(2).all()
+    return data_points
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from .. import models, schemas, oauth2
 from ..database import get_db
-import secrets
+import secrets, hashlib
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/stations", tags=['Weather Station'])
 
@@ -25,17 +33,39 @@ def create_station(
     # Generate a secure API key
     api_key = secrets.token_urlsafe(32)
 
-    # Create a new station instance
-    new_station = models.Station(location=station_data.location, api_access_key=api_key, owner=auth.username)
+    # Generate a unique 4-digit code (derived from owner id plus randomness)
+    def _generate_unique_code(db, station_name, owner_id):
+        import time
+        attempts = 0
+        while True:
+            seed = f"{owner_id}-{secrets.token_urlsafe(8)}-{time.time_ns()}"
+            h = hashlib.sha256(seed.encode()).hexdigest()
+            code = int(h, 16) % 10000
+            code_str = f"{code:04d}"
+            exists = db.query(models.Station).filter(models.Station.station_name == station_name, models.Station.unique_code == code_str).first()
+            if not exists:
+                return code_str
+            attempts += 1
+            if attempts > 20000:
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not generate unique station code")
+
+    owner_id = getattr(auth, 'user_id', 0)
+    unique_code = _generate_unique_code(db, station_data.station_name or "", owner_id)
+
+    # Create a new station instance with unique_code
+    new_station = models.Station(location=station_data.location, station_name=station_data.station_name, unique_code=unique_code, api_access_key=api_key, owner=auth.username)
 
     # Save to the database, handle errors if any
     try:
         db.add(new_station)
         db.commit()
         db.refresh(new_station)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Station with that name/code already exists")
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while creating the station: {str(e)}",)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while creating the station: {str(e)}")
 
     return new_station
 

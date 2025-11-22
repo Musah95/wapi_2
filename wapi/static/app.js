@@ -64,6 +64,58 @@ function formatStationName(owner, location, stationId) {
 }
 
 /**
+ * Formats relative time from ISO timestamp
+ * @param {string} timestamp - ISO timestamp
+ * @returns {string} Human-readable relative time (e.g., "12m ago", "3h ago")
+ */
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return "Never";
+  const date = new Date(timestamp);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
+/**
+ * Masks API key for display (show first 6 + last 4)
+ * @param {string} apiKey - Full API key
+ * @returns {string} Masked API key
+ */
+function maskApiKey(apiKey) {
+  if (!apiKey || apiKey.length < 10) return "***hidden***";
+  return apiKey.slice(0, 6) + "..." + apiKey.slice(-4);
+}
+
+/**
+ * Formats metric values with appropriate units and decimals
+ * @param {string} metric - Metric name
+ * @param {number} value - Metric value
+ * @returns {string} Formatted value with unit
+ */
+function formatMetric(metric, value) {
+  const units = {
+    temperature: "°C",
+    humidity: "%",
+    pressure: "hPa",
+    wind_speed: "m/s",
+    uv_index: "",
+  };
+  const unit = units[metric] || "";
+  const decimal = metric === "wind_speed" ? 1 : metric === "uv_index" ? 1 : metric === "temperature" ? 1 : 0;
+  const formatted = parseFloat(value).toFixed(decimal);
+  return `${formatted}${unit}`;
+}
+
+/**
  * Adjusts the font size of station name headers to fit within their containers.
  * Reduces font size progressively until the title fits on a single line.
  */
@@ -87,6 +139,47 @@ function adjustStationNames() {
       h3.style.fontSize = fontSize + 'px';
     }
   });
+}
+
+/**
+ * Returns a trend arrow (▲/▼/▬) and color for temperature based on last two readings
+ * @param {number} stationId
+ * @returns {Promise<{arrow: string, color: string}>}
+ */
+async function getTemperatureTrendArrow(stationId) {
+  try {
+    const res = await fetch(`${API_BASE}/stations/${stationId}/latest_metrics`);
+    if (!res.ok) return { arrow: '', color: '' };
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length < 2) return { arrow: '▬', color: '#64748b' };
+    const [latest, previous] = data;
+    if (latest.temperature > previous.temperature) return { arrow: '▲', color: '#10b981' };
+    if (latest.temperature < previous.temperature) return { arrow: '▼', color: '#ef4444' };
+    return { arrow: '▬', color: '#64748b' };
+  } catch {
+    return { arrow: '', color: '' };
+  }
+}
+
+/**
+ * Returns trend arrow and color for any metric
+ * @param {number} stationId
+ * @param {string} metric
+ * @returns {Promise<{arrow: string, color: string}>}
+ */
+async function getMetricTrendArrow(stationId, metric) {
+  try {
+    const res = await fetch(`${API_BASE}/stations/${stationId}/latest_metrics`);
+    if (!res.ok) return { arrow: '', color: '' };
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length < 2) return { arrow: '▬', color: '#64748b' };
+    const [latest, previous] = data;
+    if (latest[metric] > previous[metric]) return { arrow: '▲', color: '#10b981' };
+    if (latest[metric] < previous[metric]) return { arrow: '▼', color: '#ef4444' };
+    return { arrow: '▬', color: '#64748b' };
+  } catch {
+    return { arrow: '', color: '' };
+  }
 }
 
 // ============================================
@@ -145,33 +238,40 @@ function renderPublicStations() {
 
       stations.forEach(station => {
         const connectionStatus = getConnectionStatus(station.last_updated);
+        const displayName = station.station_name ? `${station.station_name} (${station.location})` : station.location;
+        const relativeTime = formatRelativeTime(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card";
         card.setAttribute("data-station-id", station.station_id);
         card.innerHTML = `
           <div class="station-header">
-            <h3 title="${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}">📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
+            <div class="station-title">
+              <h3 title="${station.station_name || station.location}">📍 ${station.station_name || station.location}</h3>
+              <span class="station-code">#${station.unique_code}</span>
+            </div>
+            <p class="station-subtitle">${station.location} · Owner: ${station.owner}</p>
             <div class="badge-group">
               <span class="badge badge-public">Public</span>
-              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status}</span>
+              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status} · ${relativeTime}</span>
+            </div>
+          </div>
+          <div class="station-primary-metric">
+            <div class="temp-display" data-metric="temperature">
+              <span class="temp-value">${formatMetric('temperature', station.temperature)}</span>
             </div>
           </div>
           <div class="station-data">
             <div class="data-row">
-              <span class="label">🌡️ Temperature:</span>
-              <span class="value" data-metric="temperature">${station.temperature}°C</span>
-            </div>
-            <div class="data-row">
               <span class="label">💧 Humidity:</span>
-              <span class="value" data-metric="humidity">${station.humidity}%</span>
+              <span class="value" data-metric="humidity">${formatMetric('humidity', station.humidity)}</span>
             </div>
             <div class="data-row">
               <span class="label">📊 Pressure:</span>
-              <span class="value" data-metric="pressure">${station.pressure} hPa</span>
+              <span class="value" data-metric="pressure">${formatMetric('pressure', station.pressure)}</span>
             </div>
             <div class="data-row">
-              <span class="label">💨 Wind Speed:</span>
-              <span class="value" data-metric="wind_speed">${station.wind_speed} m/s</span>
+              <span class="label">💨 Wind:</span>
+              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</span>
             </div>
             <div class="data-row">
               <span class="label">🌧️ Raining:</span>
@@ -363,19 +463,20 @@ function startStationsAutoRefresh() {
           const card = document.querySelector(`[data-station-id="${station.station_id}"]`);
           if (!card) return;
           const tempValue = card.querySelector('[data-metric="temperature"]');
-          if (tempValue) tempValue.textContent = station.temperature + '°C';
+          if (tempValue) tempValue.textContent = formatMetric('temperature', station.temperature);
           const humidityValue = card.querySelector('[data-metric="humidity"]');
-          if (humidityValue) humidityValue.textContent = station.humidity + '%';
+          if (humidityValue) humidityValue.textContent = formatMetric('humidity', station.humidity);
           const pressureValue = card.querySelector('[data-metric="pressure"]');
-          if (pressureValue) pressureValue.textContent = station.pressure + ' hPa';
+          if (pressureValue) pressureValue.textContent = formatMetric('pressure', station.pressure);
           const windSpeedValue = card.querySelector('[data-metric="wind_speed"]');
-          if (windSpeedValue) windSpeedValue.textContent = station.wind_speed + ' m/s';
+          if (windSpeedValue) windSpeedValue.textContent = formatMetric('wind_speed', station.wind_speed);
           const rainingValue = card.querySelector('[data-metric="is_raining"]');
           if (rainingValue) rainingValue.textContent = station.is_raining ? 'Yes' : 'No';
           const connectionBadge = card.querySelector('[data-metric="connection-status"]');
           if (connectionBadge) {
             const status = getConnectionStatus(station.last_updated);
-            connectionBadge.textContent = status.status;
+            const relativeTime = formatRelativeTime(station.last_updated);
+            connectionBadge.textContent = `${status.status} · ${relativeTime}`;
             connectionBadge.className = `badge ${status.badgeClass}`;
           }
         });
@@ -400,19 +501,20 @@ function startStationsAutoRefresh() {
             const card = document.querySelector(`[data-station-id="${station.station_id}"]`);
             if (!card) return;
             const tempValue = card.querySelector('[data-metric="temperature"]');
-            if (tempValue) tempValue.textContent = station.temperature + '°C';
+            if (tempValue) tempValue.textContent = formatMetric('temperature', station.temperature);
             const humidityValue = card.querySelector('[data-metric="humidity"]');
-            if (humidityValue) humidityValue.textContent = station.humidity + '%';
+            if (humidityValue) humidityValue.textContent = formatMetric('humidity', station.humidity);
             const pressureValue = card.querySelector('[data-metric="pressure"]');
-            if (pressureValue) pressureValue.textContent = station.pressure + ' hPa';
+            if (pressureValue) pressureValue.textContent = formatMetric('pressure', station.pressure);
             const windSpeedValue = card.querySelector('[data-metric="wind_speed"]');
-            if (windSpeedValue) windSpeedValue.textContent = station.wind_speed + ' m/s';
+            if (windSpeedValue) windSpeedValue.textContent = formatMetric('wind_speed', station.wind_speed);
             const rainingValue = card.querySelector('[data-metric="is_raining"]');
             if (rainingValue) rainingValue.textContent = station.is_raining ? 'Yes' : 'No';
             const connectionBadge = card.querySelector('[data-metric="connection-status"]');
             if (connectionBadge) {
               const status = getConnectionStatus(station.last_updated);
-              connectionBadge.textContent = status.status;
+              const relativeTime = formatRelativeTime(station.last_updated);
+              connectionBadge.textContent = `${status.status} · ${relativeTime}`;
               connectionBadge.className = `badge ${status.badgeClass}`;
             }
           });
@@ -491,33 +593,40 @@ function renderAuthenticatedPublicStations() {
 
       stations.forEach(station => {
         const connectionStatus = getConnectionStatus(station.last_updated);
+        const displayName = station.station_name ? `${station.station_name} (${station.location})` : station.location;
+        const relativeTime = formatRelativeTime(station.last_updated);
         const card = document.createElement("div");
         card.className = "station-card";
         card.setAttribute("data-station-id", station.station_id);
         card.innerHTML = `
           <div class="station-header">
-            <h3 title="${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}">📍 ${formatStationName(station.owner || 'Unknown', station.location, station.station_id)}</h3>
+            <div class="station-title">
+              <h3 title="${station.station_name || station.location}">📍 ${station.station_name || station.location}</h3>
+              <span class="station-code">#${station.unique_code}</span>
+            </div>
+            <p class="station-subtitle">${station.location} · Owner: ${station.owner}</p>
             <div class="badge-group">
               <span class="badge badge-public">Public</span>
-              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status}</span>
+              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status} · ${relativeTime}</span>
+            </div>
+          </div>
+          <div class="station-primary-metric">
+            <div class="temp-display" data-metric="temperature">
+              <span class="temp-value">${formatMetric('temperature', station.temperature)}</span>
             </div>
           </div>
           <div class="station-data">
             <div class="data-row">
-              <span class="label">🌡️ Temperature:</span>
-              <span class="value" data-metric="temperature">${station.temperature}°C</span>
-            </div>
-            <div class="data-row">
               <span class="label">💧 Humidity:</span>
-              <span class="value" data-metric="humidity">${station.humidity}%</span>
+              <span class="value" data-metric="humidity">${formatMetric('humidity', station.humidity)}</span>
             </div>
             <div class="data-row">
               <span class="label">📊 Pressure:</span>
-              <span class="value" data-metric="pressure">${station.pressure} hPa</span>
+              <span class="value" data-metric="pressure">${formatMetric('pressure', station.pressure)}</span>
             </div>
             <div class="data-row">
-              <span class="label">💨 Wind Speed:</span>
-              <span class="value" data-metric="wind_speed">${station.wind_speed} m/s</span>
+              <span class="label">💨 Wind:</span>
+              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</span>
             </div>
             <div class="data-row">
               <span class="label">🌧️ Raining:</span>
@@ -558,40 +667,53 @@ function renderUserStations() {
 
       stations.forEach(station => {
         const connectionStatus = getConnectionStatus(station.last_updated);
+        const displayName = station.station_name ? `${station.station_name} (${station.location})` : station.location;
+        const relativeTime = formatRelativeTime(station.last_updated);
+        const maskedKey = maskApiKey(station.api_access_key);
         const card = document.createElement("div");
         card.className = "station-card user-station";
         card.setAttribute("data-station-id", station.station_id);
         card.innerHTML = `
           <div class="station-header">
-            <h3 title="${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}">📍 ${formatStationName(station.owner || currentUser.username, station.location, station.station_id)}</h3>
+            <div class="station-title">
+              <h3 title="${station.station_name || station.location}">📍 ${station.station_name || station.location}</h3>
+              <span class="station-code">#${station.unique_code}</span>
+            </div>
+            <p class="station-subtitle">${station.location} · ${currentUser?.username}</p>
             <div class="badge-group">
               <span class="badge ${station.is_public ? 'badge-public' : 'badge-private'}">
                 ${station.is_public ? 'Public' : 'Private'}
               </span>
-              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status}</span>
+              <span class="badge ${connectionStatus.badgeClass}" data-metric="connection-status">${connectionStatus.status} · ${relativeTime}</span>
+            </div>
+          </div>
+          <div class="station-primary-metric">
+            <div class="temp-display" data-metric="temperature">
+              <span class="temp-value">${formatMetric('temperature', station.temperature)}</span>
+              <span class="trend-arrow" id="trend-${station.station_id}"></span>
             </div>
           </div>
           <div class="station-data">
             <div class="data-row">
-              <span class="label">🌡️ Temperature:</span>
-              <span class="value" data-metric="temperature">${station.temperature}°C</span>
-            </div>
-            <div class="data-row">
               <span class="label">💧 Humidity:</span>
-              <span class="value" data-metric="humidity">${station.humidity}%</span>
+              <span class="value" data-metric="humidity">${formatMetric('humidity', station.humidity)}</span>
             </div>
             <div class="data-row">
               <span class="label">📊 Pressure:</span>
-              <span class="value" data-metric="pressure">${station.pressure} hPa</span>
+              <span class="value" data-metric="pressure">${formatMetric('pressure', station.pressure)}</span>
+            </div>
+            <div class="data-row">
+              <span class="label">💨 Wind:</span>
+              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</span>
             </div>
             <div class="data-row">
               <span class="label">🌐 API Key:</span>
-              <span class="value api-key-display" id="key-${station.station_id}">${station.api_access_key}</span>
-              <button class="btn btn-sm btn-copy" onclick="copyToClipboard('key-${station.station_id}')">Copy</button>
+              <span class="value api-key-masked" id="key-${station.station_id}" data-full-key="${station.api_access_key}" onclick="revealApiKey(${station.station_id})" style="cursor:pointer; font-weight:bold;">${maskedKey}</span>
+              <button class="btn btn-sm btn-copy" onclick="copyToClipboard('key-${station.station_id}', '${station.api_access_key}')">Copy</button>
             </div>
           </div>
           <div class="card-actions">
-            <button class="btn btn-secondary" onclick="viewStationDetail(${station.station_id})">View Details</button>
+            <button class="btn btn-secondary" onclick="viewStationDetail(${station.station_id})">Details</button>
             <button class="btn btn-secondary" onclick="openEditStationModal(${station.station_id}, '${station.location}', ${station.is_public})">Edit</button>
           </div>
         `;
@@ -599,6 +721,18 @@ function renderUserStations() {
       });
       // Ensure long station titles fit on a single line in the user grid
       adjustStationNames();
+
+      // Set trend arrows for temperature
+      stations.forEach(async station => {
+        const trend = await getTemperatureTrendArrow(station.station_id);
+        const arrowEl = document.getElementById(`trend-${station.station_id}`);
+        if (arrowEl) {
+          arrowEl.textContent = trend.arrow;
+          arrowEl.style.color = trend.color;
+          arrowEl.style.fontWeight = 'bold';
+          arrowEl.style.marginLeft = '4px';
+        }
+      });
     })
     .catch(err => {
       console.error("Error fetching stations:", err);
@@ -621,6 +755,7 @@ function closeAddStationModal() {
 function handleAddStation(event) {
   event.preventDefault();
   const location = document.getElementById("station-location").value;
+  const station_name = document.getElementById("station-name").value || null;
 
   fetch(`${API_BASE}/stations/`, {
     method: "POST",
@@ -628,7 +763,7 @@ function handleAddStation(event) {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${localStorage.getItem("token")}`
     },
-    body: JSON.stringify({ location })
+    body: JSON.stringify({ location, station_name })
   })
     .then(res => {
       if (!res.ok) throw new Error("Failed to create station");
@@ -731,42 +866,96 @@ function fetchStationDetail(isUserStation = false) {
     })
     .then(station => {
       const detailInfo = document.getElementById("detail-info");
-      detailInfo.innerHTML = `
-        <div class="detail-content">
-          <div class="info-row">
-            <span class="label">📍 Location:</span>
-            <span class="value">${station.location}</span>
+      const maskedKey = maskApiKey(station.api_access_key);
+      const createdDate = new Date(station.created_at).toLocaleDateString();
+      const lastUpdatedText = station.last_updated ? formatRelativeTime(station.last_updated) : "Never";
+      
+      const metadataRows = `
+        <div class="metadata-grid">
+          <div class="metadata-row">
+            <span class="metadata-label">Station Name:</span>
+            <span class="metadata-value">${station.station_name || '(Not set)'}</span>
           </div>
-          <div class="info-row">
-            <span class="label">🌡️ Temperature:</span>
-            <span class="value">${station.temperature}°C</span>
+          <div class="metadata-row">
+            <span class="metadata-label">Code:</span>
+            <span class="metadata-value">#${station.unique_code}</span>
           </div>
-          <div class="info-row">
-            <span class="label">💧 Humidity:</span>
-            <span class="value">${station.humidity}%</span>
+          <div class="metadata-row">
+            <span class="metadata-label">Location:</span>
+            <span class="metadata-value">${station.location}</span>
           </div>
-          <div class="info-row">
-            <span class="label">📊 Pressure:</span>
-            <span class="value">${station.pressure} hPa</span>
+          <div class="metadata-row">
+            <span class="metadata-label">Station ID:</span>
+            <span class="metadata-value">${station.station_id}</span>
           </div>
-          <div class="info-row">
-            <span class="label">💨 Wind Speed:</span>
-            <span class="value">${station.wind_speed} m/s</span>
+          <div class="metadata-row">
+            <span class="metadata-label">Owner:</span>
+            <span class="metadata-value">${station.owner}</span>
           </div>
-          <div class="info-row">
-            <span class="label">🧭 Wind Direction:</span>
-            <span class="value">${station.wind_direction}</span>
+          <div class="metadata-row">
+            <span class="metadata-label">Created:</span>
+            <span class="metadata-value">${createdDate}</span>
           </div>
-          <div class="info-row">
-            <span class="label">☀️ UV Index:</span>
-            <span class="value">${station.uv_index}</span>
+          <div class="metadata-row">
+            <span class="metadata-label">Last Updated:</span>
+            <span class="metadata-value">${lastUpdatedText}</span>
           </div>
-          <div class="info-row">
-            <span class="label">🌧️ Raining:</span>
-            <span class="value">${station.is_raining ? 'Yes' : 'No'}</span>
+          <div class="metadata-row">
+            <span class="metadata-label">Visibility:</span>
+            <span class="metadata-value ${station.is_public ? 'text-public' : 'text-private'}">
+              ${station.is_public ? '🌐 Public' : '🔒 Private'}
+            </span>
+          </div>
+          <div class="metadata-row">
+            <span class="metadata-label">API Key:</span>
+            <span class="metadata-value api-key-masked" id="detail-key-${station.station_id}" data-full-key="${station.api_access_key}" onclick="revealApiKey('detail-key-${station.station_id}')" style="cursor:pointer; font-weight:bold;">${maskedKey}</span>
           </div>
         </div>
       `;
+      
+      const currentMetrics = `
+        <div class="detail-metrics">
+          <h4>Current Readings</h4>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <div class="metric-label">Temperature</div>
+              <div class="metric-value" data-metric="temperature">${formatMetric('temperature', station.temperature)}</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Humidity</div>
+              <div class="metric-value" data-metric="humidity">${formatMetric('humidity', station.humidity)}</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Pressure</div>
+              <div class="metric-value" data-metric="pressure">${formatMetric('pressure', station.pressure)}</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Wind Speed</div>
+              <div class="metric-value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">UV Index</div>
+              <div class="metric-value" data-metric="uv_index">${formatMetric('uv_index', station.uv_index)}</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Raining</div>
+              <div class="metric-value" data-metric="is_raining">${station.is_raining ? 'Yes' : 'No'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      detailInfo.innerHTML = metadataRows + currentMetrics;
+
+      const metrics = ['temperature', 'humidity', 'pressure', 'wind_speed', 'uv_index'];
+      metrics.forEach(async metric => {
+        const trend = await getMetricTrendArrow(station.station_id, metric);
+        const metricItem = detailInfo.querySelector(`.metric-value[data-metric="${metric}"]`);
+        if (metricItem) {
+          metricItem.insertAdjacentHTML('beforeend', ` <span class="trend-arrow" style="color:${trend.color};font-weight:bold;">${trend.arrow}</span>`);
+          metricItem.style.color = trend.color;
+        }
+      });
     })
     .catch(err => {
       console.error("Error fetching station details:", err);
@@ -989,9 +1178,8 @@ function logout() {
   initializePublicView();
 }
 
-function copyToClipboard(elementId) {
-  const element = document.getElementById(elementId);
-  const text = element.textContent;
+function copyToClipboard(elementId, directText) {
+  const text = directText || document.getElementById(elementId)?.textContent || "";
 
   navigator.clipboard.writeText(text).then(() => {
     const btn = event.target;
@@ -1003,6 +1191,17 @@ function copyToClipboard(elementId) {
   }).catch(err => {
     console.error("Failed to copy:", err);
   });
+}
+
+function revealApiKey(stationId) {
+  const keyElement = document.getElementById(`key-${stationId}`);
+  if (keyElement.classList.contains('revealed')) {
+    keyElement.classList.remove('revealed');
+    keyElement.textContent = maskApiKey(keyElement.dataset.fullKey);
+  } else {
+    keyElement.classList.add('revealed');
+    keyElement.textContent = keyElement.dataset.fullKey;
+  }
 }
 
 function showEditStationModal() {

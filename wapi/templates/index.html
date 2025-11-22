@@ -157,6 +157,10 @@
         <h3>Add New Weather Station</h3>
         <form id="add-station-form" onsubmit="handleAddStation(event)">
           <div class="form-group">
+            <label for="station-name">Station Name (Optional)</label>
+            <input type="text" id="station-name" placeholder="e.g., Downtown Weather Hub" />
+          </div>
+          <div class="form-group">
             <label for="station-location">Location</label>
             <input type="text" id="station-location" placeholder="e.g., New York City" required />
           </div>

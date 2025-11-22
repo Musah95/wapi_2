@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, Sequence, JSON
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, Sequence, JSON, UniqueConstraint
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from .database import Base
@@ -20,9 +20,16 @@ class User(Base):
 # WEATHER STATION MODEL
 class Station(Base):
     __tablename__ = "stations"
+    __table_args__ = (
+        UniqueConstraint('owner', 'station_name', name='uq_owner_station_name'),
+        UniqueConstraint('station_name', 'unique_code', name='uq_station_name_code'),
+        UniqueConstraint('api_access_key', name='uq_api_key'),
+    )
 
     station_id = Column(Integer, primary_key=True, nullable=False)
     api_access_key = Column(String, nullable=False)
+    station_name = Column(String, nullable=True)
+    unique_code = Column(String(4), nullable=False)
     location = Column(String, nullable=False)
     owner = Column(String, ForeignKey("users.username", ondelete="CASCADE"), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'), nullable=False)
