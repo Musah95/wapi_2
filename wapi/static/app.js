@@ -935,8 +935,10 @@ function fetchStationDetail(isUserStation = false) {
 
   doFetch(Boolean(Object.keys(headers).length))
     .catch(async err => {
-      // If unauthorized and this wasn't a user-only request, retry unauthenticated once
-      if (err && err.status === 401 && !isUserStation) {
+      // If unauthorized (likely a stale token), retry unauthenticated once.
+      // The endpoint supports both authenticated and public access, so a 401 
+      // should trigger a fallback to unauthenticated if the station is public.
+      if (err && err.status === 401) {
         console.debug('fetchStationDetail: received 401, retrying without Authorization header');
         try {
           return await doFetch(false);
