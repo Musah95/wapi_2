@@ -914,39 +914,13 @@ function viewStationDetail(stationId) {
 
 function fetchStationDetail(isUserStation = false) {
   const token = localStorage.getItem("token");
-  const headers = (isUserStation && token) ? { Authorization: `Bearer ${token}` } : {};
-  console.debug('fetchStationDetail: headers=', headers, 'isUserStation=', isUserStation, 'currentStationId=', currentStationId);
 
-  // Attempt to fetch station details. If we receive 401 and this was not
-  // explicitly a user-station request, retry once without any Authorization
-  // header (handles cases where a stale/invalid token is stored).
-  async function doFetch(withHeaders) {
-    const opts = withHeaders ? { headers } : {};
-    const res = await fetch(`${API_BASE}/stations/${currentStationId}/details`, opts);
-    if (!res.ok) {
-      const body = await res.text().catch(() => '<no body>');
-      const err = new Error(`Failed to fetch station details (status ${res.status}): ${body}`);
-      err.status = res.status;
-      err.body = body;
-      throw err;
-    }
-    return res.json();
-  }
-
-  doFetch(Boolean(Object.keys(headers).length))
-    .catch(async err => {
-      // If unauthorized (likely a stale token), retry unauthenticated once.
-      // The endpoint supports both authenticated and public access, so a 401 
-      // should trigger a fallback to unauthenticated if the station is public.
-      if (err && err.status === 401) {
-        console.debug('fetchStationDetail: received 401, retrying without Authorization header');
-        try {
-          return await doFetch(false);
-        } catch (err2) {
-          throw err2;
-        }
-      }
-      throw err;
+  fetch(`${API_BASE}/stations/${currentStationId}/details`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch station details: ${res.status}`);
+      return res.json();
     })
     .then(station => {
       const detailInfo = document.getElementById("detail-info");
