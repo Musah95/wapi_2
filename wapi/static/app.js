@@ -450,7 +450,7 @@ function startStationsAutoRefresh() {
   }
 
   // Fetch and update every AUTO_REFRESH_INTERVAL milliseconds
-  stationsRefreshInterval = setInterval(() => {
+  stationsRefreshInterval = setInterval(async () => {
     // Always refresh public stations (works for unauthenticated and authenticated views)
     fetch(`${API_BASE}/stations/public`)
       .then(res => {
@@ -459,7 +459,7 @@ function startStationsAutoRefresh() {
       })
       .then(publicStations => {
         if (!publicStations || !Array.isArray(publicStations)) return;
-        publicStations.forEach(station => {
+        publicStations.forEach(async station => {
           const card = document.querySelector(`[data-station-id="${station.station_id}"]`);
           if (!card) return;
           const tempValue = card.querySelector('[data-metric="temperature"]');
@@ -479,6 +479,15 @@ function startStationsAutoRefresh() {
             connectionBadge.textContent = `${status.status} · ${relativeTime}`;
             connectionBadge.className = `badge ${status.badgeClass}`;
           }
+          // Update trend colors
+          const metrics = ['temperature', 'humidity', 'pressure', 'wind_speed'];
+          for (const metric of metrics) {
+            const trend = await getMetricTrendArrow(station.station_id, metric);
+            const valueEl = card.querySelector(`[data-metric="${metric}"]`);
+            if (valueEl) {
+              valueEl.style.color = trend.color;
+            }
+          }
         });
       })
       .catch(err => {
@@ -497,7 +506,7 @@ function startStationsAutoRefresh() {
         })
         .then(stations => {
           if (!stations || !Array.isArray(stations)) return;
-          stations.forEach(station => {
+          stations.forEach(async station => {
             const card = document.querySelector(`[data-station-id="${station.station_id}"]`);
             if (!card) return;
             const tempValue = card.querySelector('[data-metric="temperature"]');
@@ -516,6 +525,15 @@ function startStationsAutoRefresh() {
               const relativeTime = formatRelativeTime(station.last_updated);
               connectionBadge.textContent = `${status.status} · ${relativeTime}`;
               connectionBadge.className = `badge ${status.badgeClass}`;
+            }
+            // Update trend colors
+            const metrics = ['temperature', 'humidity', 'pressure', 'wind_speed'];
+            for (const metric of metrics) {
+              const trend = await getMetricTrendArrow(station.station_id, metric);
+              const valueEl = card.querySelector(`[data-metric="${metric}"]`);
+              if (valueEl) {
+                valueEl.style.color = trend.color;
+              }
             }
           });
         })
