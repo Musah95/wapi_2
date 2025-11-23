@@ -46,7 +46,7 @@ function getConnectionStatus(lastUpdated) {
   const isConnected = minutesAgo <= 120; // 2 hours = 120 minutes
   return {
     isConnected,
-    status: isConnected ? "Connected" : "Disconnected",
+    status: isConnected ? "last updated" : "Disconnected",
     badgeClass: isConnected ? "badge-connected" : "badge-disconnected"
   };
 }
@@ -257,7 +257,7 @@ function renderPublicStations() {
           </div>
           <div class="station-primary-metric">
             <div class="temp-display" data-metric="temperature">
-              <span class="temp-value">${formatMetric('temperature', station.temperature)}</span>
+              <span class="temp-value">${formatMetric('temperature', station.temperature)} <span class="trend-arrow" id="trend-${station.station_id}"></span></span>
             </div>
           </div>
           <div class="station-data">
@@ -284,6 +284,18 @@ function renderPublicStations() {
       });
       // Ensure long station titles fit on a single line
       adjustStationNames();
+
+      // Set trend arrows for temperature
+      stations.forEach(async station => {
+        const trend = await getTemperatureTrendArrow(station.station_id);
+        const arrowEl = document.getElementById(`trend-${station.station_id}`);
+        if (arrowEl) {
+          arrowEl.textContent = trend.arrow;
+          arrowEl.style.color = trend.color;
+          arrowEl.style.fontWeight = 'bold';
+          arrowEl.style.marginLeft = '4px';
+        }
+      });
     })
     .catch(err => {
       console.error("Error fetching public stations:", err);
@@ -479,13 +491,21 @@ function startStationsAutoRefresh() {
             connectionBadge.textContent = `${status.status} · ${relativeTime}`;
             connectionBadge.className = `badge ${status.badgeClass}`;
           }
-          // Update trend colors
+          // Update trend arrow and colors
           const metrics = ['temperature', 'humidity', 'pressure', 'wind_speed'];
           for (const metric of metrics) {
             const trend = await getMetricTrendArrow(station.station_id, metric);
             const valueEl = card.querySelector(`[data-metric="${metric}"]`);
             if (valueEl) {
               valueEl.style.color = trend.color;
+            }
+            // Update temperature trend arrow
+            if (metric === 'temperature') {
+              const arrowEl = document.getElementById(`trend-${station.station_id}`);
+              if (arrowEl) {
+                arrowEl.textContent = trend.arrow;
+                arrowEl.style.color = trend.color;
+              }
             }
           }
         });
@@ -526,13 +546,21 @@ function startStationsAutoRefresh() {
               connectionBadge.textContent = `${status.status} · ${relativeTime}`;
               connectionBadge.className = `badge ${status.badgeClass}`;
             }
-            // Update trend colors
+            // Update trend arrow and colors
             const metrics = ['temperature', 'humidity', 'pressure', 'wind_speed'];
             for (const metric of metrics) {
               const trend = await getMetricTrendArrow(station.station_id, metric);
               const valueEl = card.querySelector(`[data-metric="${metric}"]`);
               if (valueEl) {
                 valueEl.style.color = trend.color;
+              }
+              // Update temperature trend arrow
+              if (metric === 'temperature') {
+                const arrowEl = document.getElementById(`trend-${station.station_id}`);
+                if (arrowEl) {
+                  arrowEl.textContent = trend.arrow;
+                  arrowEl.style.color = trend.color;
+                }
               }
             }
           });
@@ -630,7 +658,7 @@ function renderAuthenticatedPublicStations() {
           </div>
           <div class="station-primary-metric">
             <div class="temp-display" data-metric="temperature">
-              <span class="temp-value">${formatMetric('temperature', station.temperature)}</span>
+              <span class="temp-value">${formatMetric('temperature', station.temperature)} <span class="trend-arrow" id="trend-${station.station_id}"></span></span>
             </div>
           </div>
           <div class="station-data">
@@ -657,6 +685,18 @@ function renderAuthenticatedPublicStations() {
       });
       // Ensure long station titles fit on a single line in this grid
       adjustStationNames();
+
+      // Set trend arrows for temperature
+      stations.forEach(async station => {
+        const trend = await getTemperatureTrendArrow(station.station_id);
+        const arrowEl = document.getElementById(`trend-${station.station_id}`);
+        if (arrowEl) {
+          arrowEl.textContent = trend.arrow;
+          arrowEl.style.color = trend.color;
+          arrowEl.style.fontWeight = 'bold';
+          arrowEl.style.marginLeft = '4px';
+        }
+      });
     })
     .catch(err => {
       console.error("Error fetching public stations:", err);
@@ -707,8 +747,7 @@ function renderUserStations() {
           </div>
           <div class="station-primary-metric">
             <div class="temp-display" data-metric="temperature">
-              <span class="temp-value">${formatMetric('temperature', station.temperature)}</span>
-              <span class="trend-arrow" id="trend-${station.station_id}"></span>
+              <span class="temp-value">${formatMetric('temperature', station.temperature)} <span class="trend-arrow" id="trend-${station.station_id}"></span></span>
             </div>
           </div>
           <div class="station-data">
@@ -878,8 +917,11 @@ function fetchStationDetail(isUserStation = false) {
   const headers = isUserStation ? { Authorization: `Bearer ${token}` } : {};
 
   fetch(`${API_BASE}/stations/${currentStationId}/details`, { headers })
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to fetch station details");
+    .then(async res => {
+      if (!res.ok) {
+        const body = await res.text().catch(() => '<no body>');
+        throw new Error(`Failed to fetch station details (status ${res.status}): ${body}`);
+      }
       return res.json();
     })
     .then(station => {
@@ -977,7 +1019,8 @@ function fetchStationDetail(isUserStation = false) {
     })
     .catch(err => {
       console.error("Error fetching station details:", err);
-      document.getElementById("detail-info").innerHTML = "<p class='error'>Failed to load station details.</p>";
+      const msg = err && err.message ? err.message : 'Failed to load station details.';
+      document.getElementById("detail-info").innerHTML = `<p class='error'>Failed to load station details. ${msg}</p>`;
     });
 }
 

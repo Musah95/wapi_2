@@ -180,7 +180,6 @@ def get_station_by_id(
 
     return station
 
-
 # GET ALL STATIONS
 @router.get("/all",status_code=status.HTTP_200_OK , response_model=List[schemas.StationData])
 def get_all_stations_data(
