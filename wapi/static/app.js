@@ -914,15 +914,37 @@ function viewStationDetail(stationId) {
 
 function fetchStationDetail(isUserStation = false) {
   const token = localStorage.getItem("token");
-  const headers = isUserStation ? { Authorization: `Bearer ${token}` } : {};
+  const headers = (isUserStation && token) ? { Authorization: `Bearer ${token}` } : {};
+  console.debug('fetchStationDetail: headers=', headers, 'isUserStation=', isUserStation, 'currentStationId=', currentStationId);
 
-  fetch(`${API_BASE}/stations/${currentStationId}/details`, { headers })
-    .then(async res => {
-      if (!res.ok) {
-        const body = await res.text().catch(() => '<no body>');
-        throw new Error(`Failed to fetch station details (status ${res.status}): ${body}`);
+  // Attempt to fetch station details. If we receive 401 and this was not
+  // explicitly a user-station request, retry once without any Authorization
+  // header (handles cases where a stale/invalid token is stored).
+  async function doFetch(withHeaders) {
+    const opts = withHeaders ? { headers } : {};
+    const res = await fetch(`${API_BASE}/stations/${currentStationId}/details`, opts);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '<no body>');
+      const err = new Error(`Failed to fetch station details (status ${res.status}): ${body}`);
+      err.status = res.status;
+      err.body = body;
+      throw err;
+    }
+    return res.json();
+  }
+
+  doFetch(Boolean(Object.keys(headers).length))
+    .catch(async err => {
+      // If unauthorized and this wasn't a user-only request, retry unauthenticated once
+      if (err && err.status === 401 && !isUserStation) {
+        console.debug('fetchStationDetail: received 401, retrying without Authorization header');
+        try {
+          return await doFetch(false);
+        } catch (err2) {
+          throw err2;
+        }
       }
-      return res.json();
+      throw err;
     })
     .then(station => {
       const detailInfo = document.getElementById("detail-info");
