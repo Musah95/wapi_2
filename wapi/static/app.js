@@ -271,7 +271,7 @@ function renderPublicStations() {
             </div>
             <div class="data-row">
               <span class="label">💨 Wind:</span>
-              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</span>
+              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)} ${station.wind_direction}</span>
             </div>
             <div class="data-row">
               <span class="label">🌧️ Raining:</span>
@@ -482,6 +482,8 @@ function startStationsAutoRefresh() {
           if (pressureValue) pressureValue.textContent = formatMetric('pressure', station.pressure);
           const windSpeedValue = card.querySelector('[data-metric="wind_speed"]');
           if (windSpeedValue) windSpeedValue.textContent = formatMetric('wind_speed', station.wind_speed);
+          const windDirectionValue = card.querySelector('[data-metric="wind_direction"]');
+          if (windDirectionValue) windDirectionValue.textContent = station.wind_direction;
           const rainingValue = card.querySelector('[data-metric="is_raining"]');
           if (rainingValue) rainingValue.textContent = station.is_raining ? 'Yes' : 'No';
           const connectionBadge = card.querySelector('[data-metric="connection-status"]');
@@ -537,6 +539,8 @@ function startStationsAutoRefresh() {
             if (pressureValue) pressureValue.textContent = formatMetric('pressure', station.pressure);
             const windSpeedValue = card.querySelector('[data-metric="wind_speed"]');
             if (windSpeedValue) windSpeedValue.textContent = formatMetric('wind_speed', station.wind_speed);
+            const windDirectionValue = card.querySelector('[data-metric="wind_direction"]');
+            if (windDirectionValue) windDirectionValue.textContent = station.wind_direction;
             const rainingValue = card.querySelector('[data-metric="is_raining"]');
             if (rainingValue) rainingValue.textContent = station.is_raining ? 'Yes' : 'No';
             const connectionBadge = card.querySelector('[data-metric="connection-status"]');
@@ -989,7 +993,7 @@ function fetchStationDetail(isUserStation = false) {
             </div>
             <div class="metric-item">
               <div class="metric-label">Wind Speed</div>
-              <div class="metric-value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</div>
+              <div class="metric-value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)} ${station.wind_direction}</div>
             </div>
             <div class="metric-item">
               <div class="metric-label">UV Index</div>
