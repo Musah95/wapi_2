@@ -672,7 +672,7 @@ function renderAuthenticatedPublicStations() {
             </div>
             <div class="data-row">
               <span class="label">💨 Wind:</span>
-              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</span>
+              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)} ${station.wind_direction} </span>
             </div>
             <div class="data-row">
               <span class="label">🌧️ Raining:</span>
@@ -761,7 +761,7 @@ function renderUserStations() {
             </div>
             <div class="data-row">
               <span class="label">💨 Wind:</span>
-              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)}</span>
+              <span class="value" data-metric="wind_speed">${formatMetric('wind_speed', station.wind_speed)} ${station.wind_direction}</span>
             </div>
             <div class="data-row">
               <span class="label">🌐 API Key:</span>
